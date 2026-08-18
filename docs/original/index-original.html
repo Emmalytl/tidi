@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tidyline — Cleaning, dispatched fairly</title>
+<meta name="description" content="Book a cleaning in minutes. Tidyline automatically dispatches your job to an available, fairly-scheduled cleaner.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="index.html" id="brandLink">
+    <div class="mark" id="brandMark">T</div>
+    <span id="brandName">Tidyline</span>
+  </a>
+  <div class="topnav">
+    <a href="#services">Services</a>
+    <a href="#how-it-works">How it works</a>
+    <a class="btn btn-primary btn-sm" href="#book">Book a cleaning</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero-section">
+  <div class="eyebrow">Residential &amp; office cleaning</div>
+  <h1>Tell us when, we'll dispatch who.</h1>
+  <p class="lead">Pick a date and time window that works for you. The moment you submit, we automatically assign one of our cleaning staff — fairly, based on who has room in their week.</p>
+  <div class="hero-cta">
+    <a href="#book" class="btn btn-primary">Book a cleaning</a>
+    <a href="#services" class="btn btn-ghost">See services</a>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<div class="section" id="services">
+  <h2>Services</h2>
+  <p class="section-sub">Pick the service type that fits when you book — no need to call ahead.</p>
+  <div class="services-grid">
+    <div class="service-card">
+      <div class="sicon">S</div>
+      <h3>Standard clean</h3>
+      <p>Kitchens, bathrooms, floors, and living spaces — regular upkeep for your home.</p>
+      <p class="rate" id="rate_standard"></p>
+    </div>
+    <div class="service-card">
+      <div class="sicon">D</div>
+      <h3>Deep clean</h3>
+      <p>A thorough top-to-bottom pass, including baseboards, appliances, and inside cabinets.</p>
+      <p class="rate" id="rate_deep"></p>
+    </div>
+    <div class="service-card">
+      <div class="sicon">M</div>
+      <h3>Move-in / move-out</h3>
+      <p>Get a space spotless before handover — landlords and new owners both notice.</p>
+      <p class="rate" id="rate_moveinout"></p>
+    </div>
+    <div class="service-card">
+      <div class="sicon">O</div>
+      <h3>Office clean</h3>
+      <p>Scheduled cleans for workspaces, sized to your square footage and traffic.</p>
+      <p class="rate" id="rate_office"></p>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="section" id="how-it-works">
+  <h2>How it works</h2>
+  <p class="section-sub">Three steps, no phone tag.</p>
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01 — Choose your window</span>
+      <h3>Pick a date and time</h3>
+      <p>Tell us the date, the service type, and the start and finish time that works for your schedule.</p>
+    </div>
+    <div class="step">
+      <span class="step-num">02 — We dispatch</span>
+      <h3>A cleaner is assigned instantly</h3>
+      <p>Your job goes straight to a cleaner with room in their week — you'll see who's coming right away.</p>
+    </div>
+    <div class="step">
+      <span class="step-num">03 — We show up</span>
+      <h3>Relax, it's handled</h3>
+      <p>Your assigned cleaner arrives in your window. Reschedule or add notes any time before then.</p>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING -->
+<div class="wrap" id="book">
+  <div class="hero" style="margin-bottom:24px;">
+    <div class="eyebrow">Request service</div>
+    <h1 style="font-size:28px;">Book a cleaning</h1>
+  </div>
+
+  <div class="card" id="bookingCard">
+    <form id="bookingForm">
+      <div class="grid2">
+        <div class="field">
+          <label>Full name</label>
+          <input type="text" id="f_name" required placeholder="Jordan Lee">
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="f_phone" required placeholder="(555) 012-4477">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email <span class="hint">— we'll send your invoice and receipt here</span></label>
+        <input type="email" id="f_email" required placeholder="jordan@example.com">
+      </div>
+      <div class="field">
+        <label>Service address</label>
+        <input type="text" id="f_address" required placeholder="1420 Alder St, Apt 3">
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="f_date" required>
+        </div>
+        <div class="field">
+          <label>Service type</label>
+          <select id="f_type">
+            <option>Standard clean</option>
+            <option>Deep clean</option>
+            <option>Move-in / move-out</option>
+            <option>Office clean</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Time window <span class="hint">— start and finish</span></label>
+        <div class="timegrid">
+          <input type="time" id="f_start" required>
+          <input type="time" id="f_end" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes <span class="hint">— optional</span></label>
+        <textarea id="f_notes" placeholder="Gate code, pets, areas to focus on…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" id="submitBtn">Submit request</button>
+    </form>
+  </div>
+
+  <div class="card confirm" id="confirmCard">
+    <div class="eyebrow">Request received</div>
+    <div class="tag-shuffle" id="shuffleTag">Assigning staff…</div>
+    <h2 id="confirmName"></h2>
+    <p id="confirmDetail"></p>
+    <button class="btn btn-ghost" style="margin-top:20px" onclick="resetBooking()">Book another</button>
+  </div>
+</div>
+
+<footer>
+  © <span id="year"></span> <span id="footerBrand">Tidyline</span>. &nbsp;·&nbsp; 
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let settingsState = { company_name:'Tidyline', logo_url:null, price_standard:45, price_deep:65, price_moveinout:55, price_office:50 };
+
+async function loadSettings(){
+  try{
+    const { data, error } = await sb.from('settings').select('*').eq('id',1).single();
+    if(!error && data) settingsState = data;
+  }catch(e){ /* fall back to defaults */ }
+  applyBranding();
+}
+function applyBranding(){
+  const name = settingsState.company_name || 'Tidyline';
+  document.querySelectorAll('.brand span').forEach(el=>el.textContent = name);
+  document.getElementById('footerBrand').textContent = name;
+  document.title = `${name} — Cleaning, dispatched fairly`;
+  if(settingsState.logo_url){
+    document.querySelectorAll('.brand .mark').forEach(el=>{
+      el.innerHTML = `<img src="${settingsState.logo_url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
+    });
+  }
+  const rateEls = {
+    rate_standard: settingsState.price_standard,
+    rate_deep: settingsState.price_deep,
+    rate_moveinout: settingsState.price_moveinout,
+    rate_office: settingsState.price_office,
+  };
+  Object.entries(rateEls).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(el && val != null) el.textContent = `$${Number(val).toFixed(0)}/hr`;
+  });
+}
+loadSettings();
+
+async function sendInvoiceEmail(booking){
+  try{
+    const { error } = await sb.functions.invoke('send-email', {
+      body: {
+        type: 'invoice',
+        booking: {
+          email: booking.email, type: booking.type, date: booking.date,
+          start_time: booking.start, end_time: booking.end,
+          address: booking.address, price: booking.price
+        },
+        companyName: settingsState.company_name,
+        logoUrl: settingsState.logo_url
+      }
+    });
+    if(error) throw error;
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+document.getElementById('f_date').min = new Date().toISOString().split('T')[0];
+
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+}
+function fmtTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':');
+  const hn = parseInt(h,10);
+  const ampm = hn>=12?'PM':'AM';
+  const h12 = hn%12===0?12:hn%12;
+  return `${h12}:${m} ${ampm}`;
+}
+
+document.getElementById('bookingForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const start = document.getElementById('f_start').value;
+  const end = document.getElementById('f_end').value;
+  if(start && end && start >= end){
+    toast('End time must be after start time');
+    return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const bookingDraft = {
+    id: 'b_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    name: document.getElementById('f_name').value,
+    phone: document.getElementById('f_phone').value,
+    email: document.getElementById('f_email').value,
+    address: document.getElementById('f_address').value,
+    date: document.getElementById('f_date').value,
+    start, end,
+    type: document.getElementById('f_type').value,
+    notes: document.getElementById('f_notes').value,
+  };
+
+  const { data, error } = await sb.rpc('create_booking', {
+    p_id: bookingDraft.id,
+    p_name: bookingDraft.name,
+    p_phone: bookingDraft.phone,
+    p_email: bookingDraft.email,
+    p_address: bookingDraft.address,
+    p_date: bookingDraft.date,
+    p_start: bookingDraft.start,
+    p_end: bookingDraft.end,
+    p_type: bookingDraft.type,
+    p_notes: bookingDraft.notes
+  });
+
+  btn.disabled = false; btn.textContent = 'Submit request';
+
+  if(error){
+    console.error(error);
+    toast('Something went wrong submitting your request — please try again.');
+    return;
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  bookingDraft.price = result.price;
+
+  document.getElementById('bookingCard').style.display = 'none';
+  const confirmCard = document.getElementById('confirmCard');
+  confirmCard.style.display = 'block';
+  const shuffleTag = document.getElementById('shuffleTag');
+  shuffleTag.innerHTML = `${result.assigned_staff_name} is assigned`;
+  document.getElementById('confirmName').textContent = 'Request confirmed';
+  const priceText = result.price != null ? ` — $${Number(result.price).toFixed(2)}` : '';
+  document.getElementById('confirmDetail').textContent =
+    `${bookingDraft.type} on ${fmtDate(bookingDraft.date)}, ${fmtTime(bookingDraft.start)}–${fmtTime(bookingDraft.end)} at ${bookingDraft.address}${priceText}.`;
+
+  sendInvoiceEmail(bookingDraft).then(ok=>{
+    if(!ok) toast("Booking confirmed, but we couldn't email your invoice — please check your email address.");
+  });
+});
+
+function resetBooking(){
+  document.getElementById('bookingForm').reset();
+  document.getElementById('f_date').min = new Date().toISOString().split('T')[0];
+  document.getElementById('bookingCard').style.display = 'block';
+  document.getElementById('confirmCard').style.display = 'none';
+}
+</script>
+</body>
+</html>

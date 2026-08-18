@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tidyline — Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="index.html" id="brandLink">
+    <div class="mark" id="brandMark">T</div>
+    <span id="brandName">Tidyline</span>
+  </a>
+  <div class="topnav" id="topnavArea"></div>
+</div>
+
+<!-- LOGIN VIEW -->
+<div id="view-login" class="wrap">
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2>Admin sign in</h2>
+      <p class="sub">Manage bookings, staff, and dispatch.</p>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="adminEmail" placeholder="you@tidyline.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="adminPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="tryLogin()">Sign in</button>
+      <div class="err" id="loginErr">Couldn't sign in — check your email and password.</div>
+      <div class="fineprint">Admin accounts are created in your Supabase project under Authentication → Users. There's no public sign-up here — only accounts you create can log in.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="view-admin" class="wrap wide" style="display:none;">
+  <div class="panel-head">
+    <h1 style="font-size:22px;">Dispatch board</h1>
+  </div>
+
+  <div id="settingsPanel" class="card" style="display:none; margin-bottom:24px;">
+    <div class="panel-head"><h3>Company settings</h3></div>
+    <div class="grid2">
+      <div class="field">
+        <label>Company name</label>
+        <input type="text" id="set_name" placeholder="Tidyline">
+      </div>
+      <div class="field">
+        <label>Logo</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img id="set_logo_preview" src="" style="height:38px;width:38px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--line);">
+          <input type="file" id="set_logo_file" accept="image/*" style="flex:1;">
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Or paste an image URL directly <span class="hint">— used if no file is chosen above</span></label>
+      <input type="text" id="set_logo_url" placeholder="https://…">
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Standard clean — $ / hour</label>
+        <input type="number" step="0.01" id="price_standard">
+      </div>
+      <div class="field">
+        <label>Deep clean — $ / hour</label>
+        <input type="number" step="0.01" id="price_deep">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Move-in / move-out — $ / hour</label>
+        <input type="number" step="0.01" id="price_moveinout">
+      </div>
+      <div class="field">
+        <label>Office clean — $ / hour</label>
+        <input type="number" step="0.01" id="price_office">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save settings</button>
+  </div>
+
+  <div class="stats" id="statsRow"></div>
+
+  <div class="two-col">
+    <div>
+      <div class="panel-head">
+        <h3>Bookings</h3>
+        <div class="filters">
+          <div class="view-toggle">
+            <button id="toggleList" class="active" onclick="setAdminView('list')">List</button>
+            <button id="toggleWeek" onclick="setAdminView('week')">Week</button>
+          </div>
+          <select id="filterStatus" onchange="renderBookingsView()">
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div id="weekNav" class="cal-nav" style="display:none;">
+        <button onclick="navWeek(-1)">‹</button>
+        <span class="rangelbl" id="weekRangeLbl"></span>
+        <button onclick="navWeek(1)">›</button>
+        <button class="btn btn-ghost btn-sm" style="width:auto;height:auto;padding:5px 10px;" onclick="navWeek(0)">Today</button>
+      </div>
+      <div id="bookingsWrap"></div>
+    </div>
+
+    <div>
+      <div class="panel-head">
+        <h3>Staff roster</h3>
+        <span style="font-size:11px;color:var(--muted);">This week · target 20–40h</span>
+      </div>
+      <div class="staff-list" id="staffList"></div>
+      <div class="addstaff">
+        <input type="text" id="newStaffName" placeholder="Add staff name…" onkeydown="if(event.key==='Enter')addStaff()">
+        <button class="btn btn-primary btn-sm" onclick="addStaff()">Add</button>
+      </div>
+
+      <div class="log-panel">
+        <div class="panel-head"><h3>Activity log</h3></div>
+        <div class="log-list" id="logList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STAFF_COLORS = ['#0F6B5C','#2A6F97','#C4622D','#7A5CB0','#B0553C','#3D8C7A','#4A6FA5'];
+const MIN_WEEKLY_HOURS = 20;
+const MAX_WEEKLY_HOURS = 40;
+
+let staff = [];
+let bookings = [];
+let activityLog = [];
+let adminView = 'list';
+let weekStart = startOfWeek(new Date());
+let settingsState = { company_name:'Tidyline', logo_url:null, price_standard:45, price_deep:65, price_moveinout:55, price_office:50 };
+
+async function loadSettings(){
+  try{
+    const { data, error } = await sb.from('settings').select('*').eq('id',1).single();
+    if(!error && data) settingsState = data;
+  }catch(e){ /* fall back to defaults */ }
+  applyBranding();
+}
+function applyBranding(){
+  const name = settingsState.company_name || 'Tidyline';
+  document.querySelectorAll('.brand span').forEach(el=>el.textContent = name);
+  document.title = `${name} — Admin`;
+  if(settingsState.logo_url){
+    document.querySelectorAll('.brand .mark').forEach(el=>{
+      el.innerHTML = `<img src="${settingsState.logo_url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
+    });
+  }
+}
+function toggleSettings(){
+  const el = document.getElementById('settingsPanel');
+  if(el.style.display !== 'none'){ el.style.display = 'none'; return; }
+  document.getElementById('set_name').value = settingsState.company_name || '';
+  document.getElementById('set_logo_url').value = settingsState.logo_url || '';
+  document.getElementById('price_standard').value = settingsState.price_standard;
+  document.getElementById('price_deep').value = settingsState.price_deep;
+  document.getElementById('price_moveinout').value = settingsState.price_moveinout;
+  document.getElementById('price_office').value = settingsState.price_office;
+  const preview = document.getElementById('set_logo_preview');
+  if(settingsState.logo_url){ preview.src = settingsState.logo_url; preview.style.display = 'inline-block'; }
+  else{ preview.style.display = 'none'; }
+  el.style.display = 'block';
+}
+async function saveSettings(){
+  let logo_url = settingsState.logo_url || null;
+  const file = document.getElementById('set_logo_file').files[0];
+  if(file){
+    const path = `logo-${Date.now()}-${file.name}`.replace(/\s+/g,'-');
+    const { error: upErr } = await sb.storage.from('logos').upload(path, file, { upsert: true });
+    if(upErr){ toast('Logo upload failed: ' + upErr.message); return; }
+    const { data: pub } = sb.storage.from('logos').getPublicUrl(path);
+    logo_url = pub.publicUrl;
+  } else {
+    const urlField = document.getElementById('set_logo_url').value.trim();
+    if(urlField) logo_url = urlField;
+  }
+
+  const updated = {
+    id: 1,
+    company_name: document.getElementById('set_name').value.trim() || 'Tidyline',
+    logo_url,
+    price_standard: parseFloat(document.getElementById('price_standard').value) || 0,
+    price_deep: parseFloat(document.getElementById('price_deep').value) || 0,
+    price_moveinout: parseFloat(document.getElementById('price_moveinout').value) || 0,
+    price_office: parseFloat(document.getElementById('price_office').value) || 0,
+  };
+  const { error } = await sb.from('settings').upsert(updated);
+  if(error){ toast('Could not save settings: ' + error.message); return; }
+  settingsState = updated;
+  applyBranding();
+  toggleSettings();
+  await logActivity('Company settings updated');
+  toast('Settings saved');
+}
+async function sendTransactionalEmail(type, booking){
+  try{
+    const { error } = await sb.functions.invoke('send-email', {
+      body: {
+        type,
+        booking: {
+          email: booking.email, type: booking.type, date: booking.date,
+          start_time: booking.start_time, end_time: booking.end_time,
+          address: booking.address, price: booking.price
+        },
+        companyName: settingsState.company_name,
+        logoUrl: settingsState.logo_url
+      }
+    });
+    if(error) throw error;
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
+async function resendEmail(type, bookingId){
+  const b = bookings.find(x=>x.id===bookingId);
+  if(!b){ return; }
+  if(!b.email){ toast('No email address on this booking'); return; }
+  const ok = await sendTransactionalEmail(type, b);
+  if(ok){ await logActivity(`${type === 'invoice' ? 'Invoice' : 'Receipt'} emailed to ${b.name}`); }
+  toast(ok ? `${type === 'invoice' ? 'Invoice' : 'Receipt'} sent` : `Could not send ${type}`);
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+function initials(name){
+  return name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+}
+function staffColor(id){
+  const idx = staff.findIndex(s=>s.id===id);
+  return STAFF_COLORS[(idx<0?0:idx) % STAFF_COLORS.length];
+}
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+}
+function fmtTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':');
+  const hn = parseInt(h,10);
+  const ampm = hn>=12?'PM':'AM';
+  const h12 = hn%12===0?12:hn%12;
+  return `${h12}:${m} ${ampm}`;
+}
+function startOfWeek(d){
+  const dt = new Date(d);
+  dt.setHours(0,0,0,0);
+  const day = dt.getDay();
+  const diffFromMonday = (day + 6) % 7;
+  dt.setDate(dt.getDate() - diffFromMonday);
+  return dt;
+}
+function dateKey(d){ return d.toISOString().split('T')[0]; }
+function addDays(d, n){ const dt = new Date(d); dt.setDate(dt.getDate()+n); return dt; }
+function durationHours(start, end){
+  if(!start || !end) return 0;
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let mins = (eh*60+em) - (sh*60+sm);
+  if(mins < 0) mins += 24*60;
+  return mins/60;
+}
+function getStaffWeekHours(staffId, dateStr, excludeBookingId){
+  const wStart = startOfWeek(new Date(dateStr+'T00:00:00'));
+  const wStartKey = dateKey(wStart);
+  const wEndKey = dateKey(addDays(wStart,7));
+  return bookings
+    .filter(b => b.staff_id===staffId && b.status!=='cancelled' && b.id!==excludeBookingId && b.date >= wStartKey && b.date < wEndKey)
+    .reduce((sum,b)=> sum + durationHours(b.start_time,b.end_time), 0);
+}
+function pickStaffForBooking(booking, excludeStaffId){
+  const candidates = staff.filter(s => s.active && s.id !== excludeStaffId);
+  if(candidates.length === 0) return null;
+  const dur = durationHours(booking.start_time, booking.end_time);
+  const withHours = candidates.map(s => ({
+    s, current: getStaffWeekHours(s.id, booking.date, booking.id),
+  })).map(x => ({...x, after: x.current + dur}));
+  const withinCap = withHours.filter(x => x.after <= MAX_WEEKLY_HOURS);
+  const capExceeded = withinCap.length === 0;
+  const pool = withinCap.length ? withinCap : withHours;
+  const underTarget = pool.filter(x => x.current < MIN_WEEKLY_HOURS);
+  const finalPool = underTarget.length ? underTarget : pool;
+  const pick = finalPool[Math.floor(Math.random()*finalPool.length)];
+  return { staffMember: pick.s, hoursAfter: pick.after, capExceeded };
+}
+
+// ---------- Auth ----------
+async function tryLogin(){
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPass').value;
+  document.getElementById('loginErr').style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    document.getElementById('loginErr').textContent = error.message;
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  await enterDashboard();
+}
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('view-admin').style.display = 'none';
+  document.getElementById('view-login').style.display = 'block';
+  document.getElementById('topnavArea').innerHTML = '';
+}
+async function enterDashboard(){
+  document.getElementById('view-login').style.display = 'none';
+  document.getElementById('view-admin').style.display = 'block';
+  document.getElementById('topnavArea').innerHTML = `<a class="linkbtn" onclick="toggleSettings()">Settings</a><a class="linkbtn" onclick="logout()">Sign out</a>`;
+  await loadData();
+  renderAdmin();
+}
+
+// ---------- Data ----------
+async function loadData(){
+  const [{data: staffData, error: staffErr}, {data: bookingsData, error: bookingsErr}, {data: logData, error: logErr}] = await Promise.all([
+    sb.from('staff').select('*').order('created_at', {ascending:true}),
+    sb.from('bookings').select('*'),
+    sb.from('activity_log').select('*').order('created_at', {ascending:false}).limit(60),
+  ]);
+  if(staffErr) toast('Could not load staff: ' + staffErr.message);
+  if(bookingsErr) toast('Could not load bookings: ' + bookingsErr.message);
+  staff = staffData || [];
+  bookings = bookingsData || [];
+  activityLog = logData || [];
+}
+async function logActivity(msg){
+  const { error } = await sb.from('activity_log').insert({ message: msg });
+  if(error) console.error(error);
+}
+
+// ---------- Render ----------
+function renderAdmin(){
+  renderStats();
+  renderBookingsView();
+  renderStaff();
+  renderLog();
+}
+function renderStats(){
+  const today = new Date().toISOString().split('T')[0];
+  const upcoming = bookings.filter(b=> b.date >= today && b.status!=='cancelled').length;
+  const pending = bookings.filter(b=>b.status==='pending').length;
+  const activeStaff = staff.filter(s=>s.active).length;
+  const stats = [
+    {num: bookings.length, lbl:'Total requests'},
+    {num: upcoming, lbl:'Upcoming'},
+    {num: pending, lbl:'Unassigned'},
+    {num: activeStaff, lbl:'Active staff'},
+  ];
+  document.getElementById('statsRow').innerHTML = stats.map(s=>`
+    <div class="stat"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>
+  `).join('');
+}
+function setAdminView(v){
+  adminView = v;
+  document.getElementById('toggleList').classList.toggle('active', v==='list');
+  document.getElementById('toggleWeek').classList.toggle('active', v==='week');
+  document.getElementById('weekNav').style.display = v==='week' ? 'flex' : 'none';
+  renderBookingsView();
+}
+function navWeek(dir){
+  if(dir===0){ weekStart = startOfWeek(new Date()); }
+  else{ weekStart = addDays(weekStart, dir*7); }
+  renderBookingsView();
+}
+function renderBookingsView(){
+  if(adminView === 'week') renderWeekView();
+  else renderBookings();
+}
+function renderBookings(){
+  const filter = document.getElementById('filterStatus').value;
+  const wrap = document.getElementById('bookingsWrap');
+  let list = [...bookings].sort((a,b)=> (a.date+a.start_time).localeCompare(b.date+b.start_time));
+  if(filter !== 'all') list = list.filter(b=>b.status===filter);
+
+  if(list.length===0){
+    wrap.innerHTML = `<div class="card empty"><div class="big">🧹</div>No bookings ${filter==='all'?'yet':'in this status'}.</div>`;
+    return;
+  }
+
+  const rows = list.map(b=>{
+    return `
+    <tr>
+      <td>
+        <div class="client-name">${escapeHtml(b.name)}</div>
+        <div class="client-sub">${escapeHtml(b.address)}</div>
+        <div class="client-sub">${b.price != null ? '$'+Number(b.price).toFixed(2) : ''}</div>
+      </td>
+      <td>
+        <div class="date-cell">${fmtDate(b.date)}</div>
+        <div class="time-cell">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div>
+      </td>
+      <td>${escapeHtml(b.type)}</td>
+      <td>
+        <select class="mini" onchange="reassign('${b.id}', this.value)">
+          <option value="">— none —</option>
+          ${staff.map(s=>{
+            const hrs = getStaffWeekHours(s.id, b.date, b.id);
+            const after = hrs + durationHours(b.start_time,b.end_time);
+            const flag = after > MAX_WEEKLY_HOURS ? ' ⚠' : '';
+            return `<option value="${s.id}" ${s.id===b.staff_id?'selected':''}>${escapeHtml(s.name)}${s.active?'':' (inactive)'} — ${after.toFixed(1)}h${flag}</option>`;
+          }).join('')}
+        </select>
+      </td>
+      <td><span class="status status-${b.status}">${b.status}</span></td>
+      <td>
+        <div class="rowactions">
+          <button class="btn btn-ghost btn-sm" onclick="shuffleStaff('${b.id}')">Shuffle</button>
+          ${b.status!=='completed' ? `<button class="btn btn-ghost btn-sm" onclick="setStatus('${b.id}','completed')">Complete</button>` : ''}
+          ${b.status!=='cancelled' ? `<button class="btn btn-ghost btn-sm" onclick="setStatus('${b.id}','cancelled')">Cancel</button>` : ''}
+        </div>
+        <div class="rowactions" style="margin-top:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="resendEmail('invoice','${b.id}')">Email invoice</button>
+          <button class="btn btn-ghost btn-sm" onclick="resendEmail('receipt','${b.id}')">Email receipt</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="card" style="padding:10px 6px;">
+      <table>
+        <thead><tr><th>Client</th><th>When</th><th>Service</th><th>Staff</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+function renderWeekView(){
+  const filter = document.getElementById('filterStatus').value;
+  const end = addDays(weekStart, 6);
+  document.getElementById('weekRangeLbl').textContent =
+    `${weekStart.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${end.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;
+
+  const todayKey = dateKey(new Date());
+  let days = [];
+  for(let i=0;i<7;i++) days.push(addDays(weekStart,i));
+
+  const cells = days.map(d=>{
+    const key = dateKey(d);
+    let dayBookings = bookings.filter(b=>b.date===key);
+    if(filter!=='all') dayBookings = dayBookings.filter(b=>b.status===filter);
+    dayBookings.sort((a,b)=> a.start_time.localeCompare(b.start_time));
+    const items = dayBookings.length ? dayBookings.map(b=>{
+      const sMember = staff.find(s=>s.id===b.staff_id);
+      return `<div class="cal-item st-${b.status}">
+        <span class="t">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</span>
+        <span class="n">${escapeHtml(b.name)}</span> · ${sMember?escapeHtml(sMember.name):'Unassigned'}
+      </div>`;
+    }).join('') : `<div class="cal-empty">No jobs</div>`;
+
+    return `<div class="cal-day ${key===todayKey?'today':''}">
+      <div class="cal-day-head">
+        <span class="dname">${d.toLocaleDateString(undefined,{weekday:'short'})}</span>
+        <span class="dnum">${d.getDate()}</span>
+      </div>
+      <div class="cal-items">${items}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bookingsWrap').innerHTML = `<div class="cal-grid">${cells}</div>`;
+}
+function renderStaff(){
+  const list = document.getElementById('staffList');
+  if(staff.length===0){
+    list.innerHTML = `<div class="card empty" style="padding:24px;">No staff added yet.</div>`;
+    return;
+  }
+  const thisWeekKey = dateKey(startOfWeek(new Date()));
+  list.innerHTML = staff.map(s=>{
+    const hrs = getStaffWeekHours(s.id, thisWeekKey, null);
+    const pct = Math.min(hrs / MAX_WEEKLY_HOURS, 1) * 100;
+    const barClass = hrs > MAX_WEEKLY_HOURS ? 'over' : hrs < MIN_WEEKLY_HOURS ? 'under' : 'ok';
+    const flagText = hrs > MAX_WEEKLY_HOURS ? `<span class="flag over">over cap</span>`
+      : hrs < MIN_WEEKLY_HOURS ? `<span class="flag under">under 20h</span>` : '';
+    return `
+    <div class="staff-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="staff-left">
+          <div class="avatar" style="background:${staffColor(s.id)}">${initials(s.name)}</div>
+          <div>
+            <div style="font-weight:600;font-size:13.5px;">${escapeHtml(s.name)}</div>
+            <div style="font-size:11.5px;color:var(--muted);">${bookings.filter(b=>b.staff_id===s.id && b.status!=='cancelled').length} jobs total</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="toggle ${s.active?'on':''}" onclick="toggleStaff('${s.id}')"><div class="knob"></div></div>
+          <button class="btn btn-ghost btn-sm" onclick="removeStaff('${s.id}')">Remove</button>
+        </div>
+      </div>
+      <div class="hours-row">
+        <div class="hours-track">
+          <div class="hours-fill ${barClass}" style="width:${pct}%;"></div>
+          <div class="hours-mark"></div>
+        </div>
+        <div class="hours-lbl">
+          <span>${hrs.toFixed(1)}h / ${MAX_WEEKLY_HOURS}h this week</span>
+          ${flagText}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderLog(){
+  const el = document.getElementById('logList');
+  if(activityLog.length===0){
+    el.innerHTML = `<div class="log-row"><div class="lm" style="color:var(--muted);">No activity yet.</div></div>`;
+    return;
+  }
+  el.innerHTML = activityLog.map(l=>{
+    const d = new Date(l.created_at);
+    const ts = d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    return `<div class="log-row"><div class="lt">${ts}</div><div class="lm">${escapeHtml(l.message)}</div></div>`;
+  }).join('');
+}
+
+// ---------- Actions ----------
+async function reassign(bookingId, staffId){
+  const b = bookings.find(x=>x.id===bookingId);
+  if(!b) return;
+  const newStaff = staff.find(s=>s.id===staffId);
+  const { error } = await sb.from('bookings').update({
+    staff_id: staffId || null,
+    status: staffId ? 'assigned' : 'pending'
+  }).eq('id', bookingId);
+  if(error){ toast('Could not reassign: ' + error.message); return; }
+
+  let overCap = false;
+  if(newStaff){
+    const hrs = getStaffWeekHours(newStaff.id, b.date, b.id);
+    overCap = hrs > MAX_WEEKLY_HOURS;
+  }
+  await logActivity(`${b.name}'s booking manually reassigned to ${newStaff ? newStaff.name : 'unassigned'}${overCap ? ' (over 40h cap)' : ''}`);
+  await loadData();
+  renderAdmin();
+  toast(overCap ? `Reassigned — ${newStaff.name} is now over the 40h cap` : 'Booking reassigned');
+}
+async function shuffleStaff(bookingId){
+  const b = bookings.find(x=>x.id===bookingId);
+  if(!b) return;
+  const pick = pickStaffForBooking(b, b.staff_id);
+  if(!pick){ toast('No active staff available'); return; }
+  const { error } = await sb.from('bookings').update({ staff_id: pick.staffMember.id, status: 'assigned' }).eq('id', bookingId);
+  if(error){ toast('Could not shuffle: ' + error.message); return; }
+  await logActivity(`${b.name}'s booking shuffled to ${pick.staffMember.name}${pick.capExceeded ? ' (over 40h cap)' : ''}`);
+  await loadData();
+  renderAdmin();
+  toast(pick.capExceeded ? `Reassigned to ${pick.staffMember.name} — puts them over 40h` : `Reassigned to ${pick.staffMember.name}`);
+}
+async function setStatus(bookingId, status){
+  const b = bookings.find(x=>x.id===bookingId);
+  if(!b) return;
+  const { error } = await sb.from('bookings').update({ status }).eq('id', bookingId);
+  if(error){ toast('Could not update status: ' + error.message); return; }
+  await logActivity(`${b.name}'s booking marked ${status}`);
+  await loadData();
+  renderAdmin();
+  toast(`Marked as ${status}`);
+  if(status === 'completed'){
+    const updated = bookings.find(x=>x.id===bookingId) || b;
+    const ok = await sendTransactionalEmail('receipt', updated);
+    if(ok) await logActivity(`Receipt emailed to ${updated.name}`);
+    else toast("Marked complete, but couldn't email the receipt.");
+  }
+}
+async function toggleStaff(id){
+  const s = staff.find(x=>x.id===id);
+  if(!s) return;
+  const { error } = await sb.from('staff').update({ active: !s.active }).eq('id', id);
+  if(error){ toast('Could not update staff: ' + error.message); return; }
+  await logActivity(`${s.name} marked ${!s.active?'active':'inactive'}`);
+  await loadData();
+  renderAdmin();
+}
+async function removeStaff(id){
+  const s = staff.find(x=>x.id===id);
+  const { error } = await sb.from('staff').delete().eq('id', id);
+  if(error){ toast('Could not remove staff: ' + error.message); return; }
+  if(s) await logActivity(`${s.name} removed from roster`);
+  await loadData();
+  renderAdmin();
+  toast('Staff removed');
+}
+async function addStaff(){
+  const input = document.getElementById('newStaffName');
+  const name = input.value.trim();
+  if(!name) return;
+  const id = 's_' + Date.now();
+  const { error } = await sb.from('staff').insert({ id, name, active: true });
+  if(error){ toast('Could not add staff: ' + error.message); return; }
+  await logActivity(`${name} added to roster`);
+  input.value = '';
+  await loadData();
+  renderAdmin();
+  toast('Staff added');
+}
+function exportCSV(){
+  if(bookings.length===0){ toast('No bookings to export'); return; }
+  const headers = ['Client','Phone','Address','Date','Start','End','Type','Status','Assigned staff','Notes'];
+  const rows = bookings.map(b=>{
+    const sMember = staff.find(s=>s.id===b.staff_id);
+    return [b.name, b.phone, b.address, b.date, b.start_time, b.end_time, b.type, b.status, sMember?sMember.name:'', b.notes||'']
+      .map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tidyline-bookings-${dateKey(new Date())}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV exported');
+}
+
+// ---------- Init ----------
+(async function init(){
+  await loadSettings();
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    await enterDashboard();
+  }
+})();
+</script>
+</body>
+</html>

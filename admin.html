@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Tidyline — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+
+  <!-- LOGIN -->
+  <section id="loginView" class="login-shell">
+    <div class="login-card admin-login-card">
+      <div class="login-brand"><span>T</span><strong>Tidyline</strong></div>
+      <span class="eyebrow">Secure administration</span>
+      <h1>Welcome back.</h1>
+      <p>Manage bookings, dispatch staff, pricing and business operations from one place.</p>
+
+      <form id="loginForm">
+        <label for="adminEmail">Email<input id="adminEmail" type="email" autocomplete="username" placeholder="admin@tidyline.com" required></label>
+        <label for="adminPass">Password<input id="adminPass" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
+        <button class="btn btn-primary btn-lg" id="loginBtn" type="submit">Sign in</button>
+      </form>
+      <div class="error-box" id="loginErr" role="alert"></div>
+      <small class="login-note">Authorized administrators only. Sessions automatically expire after 5 minutes of inactivity.</small>
+    </div>
+  </section>
+
+  <!-- ADMIN APP -->
+  <div id="adminApp" class="admin-app" hidden>
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-brand">
+        <a href="admin.html" class="sidebar-brand-link" aria-label="Tidyline Admin">
+          <span class="sidebar-t-mark">T</span>
+          <span><strong>Tidyline</strong><small>ADMIN CONSOLE</small></span>
+        </a>
+        <button id="mobileSidebarClose" class="icon-btn sidebar-close" type="button" aria-label="Close navigation">×</button>
+      </div>
+
+      <div class="sidebar-profile">
+        <div class="profile-avatar">T</div>
+        <div><strong id="adminIdentity">Administrator</strong><small>Operations</small></div>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Admin navigation">
+        <button class="nav-item active" data-view="overview" type="button"><span>⌂</span><span>Overview</span></button>
+        <button class="nav-item" data-view="bookings" type="button"><span>▣</span><span>Bookings</span><b id="pendingBadge">0</b></button>
+        <button class="nav-item" data-view="staff" type="button"><span>◉</span><span>Staff</span></button>
+        <button class="nav-item" id="auditNav" type="button"><span>≡</span><span>Audit tray</span></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <button class="nav-item" id="settingsBtn" type="button"><span>⚙</span><span>Settings</span></button>
+        <a class="nav-item nav-link" id="publicSiteLink" href="index.html"><span>↗</span><span>Public site</span></a>
+        <button class="nav-item danger" id="logoutBtn" type="button"><span>⇥</span><span>Sign out</span></button>
+      </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <section class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <button id="mobileMenuBtn" class="icon-btn mobile-menu-btn" type="button" aria-label="Open navigation">☰</button>
+          <div><span class="topbar-kicker">TIDYLINE OPERATIONS</span><h1 id="viewTitle">Overview</h1></div>
+        </div>
+        <div class="topbar-right">
+          <span id="sessionStatus" class="session-pill">● Active</span>
+          <button id="topLogoutBtn" class="top-logout" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <main class="admin-content">
+        <!-- OVERVIEW -->
+        <section id="view-overview" class="admin-view active-view">
+          <div class="welcome-row">
+            <div><span class="eyebrow">Good to see you</span><h2>Today at Tidyline</h2><p>Review new requests, dispatch staff and keep every service on track.</p></div>
+            <button class="btn btn-primary" id="overviewBookingsBtn" type="button">Manage bookings <span>→</span></button>
+          </div>
+          <div class="stats-grid" id="stats"></div>
+          <div class="overview-grid">
+            <section class="admin-card attention-card">
+              <div class="card-heading"><div><span class="card-kicker">Needs attention</span><h3>Pending requests</h3><p>New bookings stay pending until an admin assigns a professional.</p></div><span class="count-bubble" id="pendingCount">0</span></div>
+              <div id="pendingPreview" class="pending-preview"></div>
+            </section>
+            <section class="admin-card capacity-card">
+              <div class="card-heading"><div><span class="card-kicker">Dispatch</span><h3>Team capacity</h3><p>Weekly workload across active professionals.</p></div><button class="text-btn" data-view="staff" type="button">View team →</button></div>
+              <div id="capacityPreview" class="capacity-preview"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- BOOKINGS -->
+        <section id="view-bookings" class="admin-view" hidden>
+          <div class="page-heading"><div><span class="eyebrow">Dispatch center</span><h2>Bookings</h2><p>Every new request arrives as <strong>Pending</strong>. Assign a staff member when you are ready.</p></div><button class="btn btn-secondary" id="exportBtn" type="button">Export CSV</button></div>
+          <section class="admin-card bookings-card">
+            <div class="toolbar">
+              <div class="search-wrap"><span>⌕</span><input id="searchBookings" type="search" placeholder="Search booking, customer or email…" aria-label="Search bookings"></div>
+              <select id="statusFilter" aria-label="Filter bookings"><option value="all">All statuses</option><option value="pending">Pending</option><option value="assigned">Assigned</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Booking</th><th>Customer</th><th>Schedule</th><th>Service</th><th>Address</th><th>Assign staff</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
+                <tbody id="bookingRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- STAFF -->
+        <section id="view-staff" class="admin-view" hidden>
+          <div class="page-heading"><div><span class="eyebrow">People & capacity</span><h2>Staff</h2><p>Assign work deliberately and keep weekly workloads visible.</p></div></div>
+          <div class="staff-page-grid">
+            <section class="admin-card"><div class="card-heading"><div><span class="card-kicker">Active team</span><h3>Capacity overview</h3><p>Target 20–40 hours per week.</p></div></div><div id="staffList" class="staff-grid"></div></section>
+            <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm"><label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label><button class="btn btn-primary" type="submit">Add staff member</button></form></section>
+          </div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <!-- AUDIT TRAY -->
+  <aside id="auditTray" class="audit-tray" aria-hidden="true">
+    <div class="audit-head"><div><span class="eyebrow">System history</span><h2>Audit tray</h2><p>Administrative activity is kept here, away from the main dashboard.</p></div><button id="closeAudit" class="icon-btn" type="button" aria-label="Close audit tray">×</button></div>
+    <div id="activityList" class="audit-list"></div>
+  </aside>
+  <div id="auditOverlay" class="audit-overlay" hidden></div>
+
+  <!-- SETTINGS -->
+  <div class="modal" id="settingsModal" aria-hidden="true">
+    <div class="modal-card admin-settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <button class="modal-close" id="closeSettings" type="button" aria-label="Close settings">×</button>
+      <span class="eyebrow">Tidyline configuration</span>
+      <h2 id="settingsTitle">Service pricing</h2>
+      <p class="modal-intro">Tidyline is the fixed company identity for this system. Branding and logo editing are intentionally disabled here.</p>
+      <div class="pricing-grid">
+        <label>Standard clean / hr<input id="priceStandard" type="number" min="0" step="0.01"></label>
+        <label>Deep clean / hr<input id="priceDeep" type="number" min="0" step="0.01"></label>
+        <label>Move-in / move-out / hr<input id="priceMove" type="number" min="0" step="0.01"></label>
+        <label>Office clean / hr<input id="priceOffice" type="number" min="0" step="0.01"></label>
+        <label>Currency<select id="currencySelect"><option value="USD">🇺🇸 USD — US Dollar ($)</option><option value="GHS">🇬🇭 GHS — Ghana Cedi (GH₵)</option><option value="EUR">🇪🇺 EUR — Euro (€)</option><option value="GBP">🇬🇧 GBP — British Pound (£)</option></select></label>
+      </div>
+      <button class="btn btn-primary" id="saveSettings" type="button">Save pricing</button>
+    </div>
+  </div>
+
+  <!-- INACTIVITY WARNING -->
+  <div id="logoutWarning" class="logout-warning" hidden>
+    <div class="logout-warning-card"><span class="warning-icon">!</span><div><strong>Your session is about to expire</strong><p>You will be signed out in <b id="logoutCountdown">30</b> seconds because there has been no activity.</p></div><button id="stayLoggedIn" class="btn btn-primary" type="button">Stay signed in</button></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
