@@ -77,3 +77,6 @@ The assignment is performed in PostgreSQL rather than trusted to the public brow
 - New bookings remain pending and unassigned until an admin dispatches a staff member.
 
 See `docs/EMAIL-SETUP.md` for transactional email configuration.
+
+## Staff availability
+Run `supabase/migrations/004_staff_availability.sql` after the other migrations to enable Available, Unavailable, On Leave, Sick Off, Day Off and Inactive staff statuses.

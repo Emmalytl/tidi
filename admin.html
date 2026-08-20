@@ -105,7 +105,7 @@
             </div>
             <div class="table-wrap">
               <table class="admin-table">
-                <thead><tr><th>Booking</th><th>Customer</th><th>Schedule</th><th>Service</th><th>Address</th><th>Assign staff</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Booking</th><th>Customer</th><th>Schedule</th><th>Service</th><th>Assign staff</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
                 <tbody id="bookingRows"></tbody>
               </table>
             </div>
@@ -146,6 +146,34 @@
         <label>Currency<select id="currencySelect"><option value="USD">🇺🇸 USD — US Dollar ($)</option><option value="GHS">🇬🇭 GHS — Ghana Cedi (GH₵)</option><option value="EUR">🇪🇺 EUR — Euro (€)</option><option value="GBP">🇬🇧 GBP — British Pound (£)</option></select></label>
       </div>
       <button class="btn btn-primary" id="saveSettings" type="button">Save pricing</button>
+    </div>
+  </div>
+
+
+  <!-- STAFF AVAILABILITY -->
+  <div class="modal" id="staffStatusModal" aria-hidden="true">
+    <div class="modal-card staff-status-modal" role="dialog" aria-modal="true" aria-labelledby="staffStatusTitle">
+      <button class="modal-close" id="closeStaffStatus" type="button" aria-label="Close staff availability">×</button>
+      <span class="eyebrow">People & availability</span>
+      <h2 id="staffStatusTitle">Availability</h2>
+      <input type="hidden" id="staffStatusId">
+      <div class="pricing-grid">
+        <label>Status
+          <select id="staffStatusSelect">
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+            <option value="leave">On Leave</option>
+            <option value="sick">Sick Off</option>
+            <option value="day_off">Day Off</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label>Start date<input id="staffStatusStart" type="date"></label>
+        <label>End date<input id="staffStatusEnd" type="date"></label>
+        <label class="full-field">Reason / note<textarea id="staffStatusReason" rows="3" placeholder="Optional note, e.g. annual leave or scheduled day off"></textarea></label>
+      </div>
+      <p class="modal-intro">Unavailable, leave, sick-off and day-off staff will not appear as available for new assignments on affected service dates.</p>
+      <button class="btn btn-primary" id="saveStaffStatus" type="button">Save availability</button>
     </div>
   </div>
 

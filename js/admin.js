@@ -8,6 +8,7 @@ let staff = [];
 let bookings = [];
 let logs = [];
 let settings = { price_standard:45, price_deep:65, price_moveinout:55, price_office:50, currency:'USD' };
+let staffAvailability = [];
 const CURRENCIES = { USD:{code:'USD',symbol:'$',name:'US Dollar'}, GHS:{code:'GHS',symbol:'GH₵',name:'Ghana Cedi'}, EUR:{code:'EUR',symbol:'€',name:'Euro'}, GBP:{code:'GBP',symbol:'£',name:'British Pound'} };
 function currencyInfo(){ return CURRENCIES[settings.currency] || CURRENCIES.USD; }
 function money(value){ const c=currencyInfo(); return `${c.symbol}${Number(value||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
@@ -176,15 +177,18 @@ async function loadSettings(){
 }
 
 async function loadData(){
-  const [staffRes,bookingRes,logRes] = await Promise.all([
+  const [staffRes,bookingRes,logRes,availabilityRes] = await Promise.all([
     sb.from('staff').select('*').order('created_at',{ascending:true}),
     sb.from('bookings').select('*').order('date',{ascending:false}).order('start_time',{ascending:true}),
-    sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(100)
+    sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(100),
+    sb.from('staff_availability').select('*').order('start_date',{ascending:false})
   ]);
   if(staffRes.error || bookingRes.error || logRes.error) toast('Some dashboard data could not be loaded.');
   staff = staffRes.data || [];
   bookings = bookingRes.data || [];
   logs = logRes.data || [];
+  staffAvailability = availabilityRes.error ? [] : (availabilityRes.data || []);
+  if(availabilityRes.error && !String(availabilityRes.error.message || '').toLowerCase().includes('staff_availability')) console.warn('Availability load failed:',availabilityRes.error.message);
   renderAll();
 }
 
@@ -244,19 +248,22 @@ function renderBookings(){
     return statusMatch && (!query || searchable.includes(query));
   }).sort((a,b) => `${a.date}${a.start_time || ''}`.localeCompare(`${b.date}${b.start_time || ''}`));
 
-  $('bookingRows').innerHTML = rows.length ? rows.map(renderBookingRow).join('') : `<tr><td colspan="9"><div class="empty-state"><strong>No bookings found</strong><small>Try a different search or status filter.</small></div></td></tr>`;
+  $('bookingRows').innerHTML = rows.length ? rows.map(renderBookingRow).join('') : `<tr><td colspan="8"><div class="empty-state"><strong>No bookings found</strong><small>Try a different search or status filter.</small></div></td></tr>`;
   document.querySelectorAll('.staff-select').forEach(select => select.addEventListener('change',() => assignBooking(select.dataset.id,select.value)));
   document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click',() => bookingAction(button.dataset.action,button.dataset.id)));
 }
 
 function renderBookingRow(b){
-  const options = `<option value="">Keep pending / unassigned</option>` + staff.filter(s=>s.active).map(s => `<option value="${esc(s.id)}" ${s.id === b.staff_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+  const serviceDate = b.date || new Date().toISOString().slice(0,10);
+  const available = staff.filter(s=>s.active && isStaffAssignable(s.id,serviceDate));
+  const selected = b.staff_id ? staff.find(s=>s.id===b.staff_id) : null;
+  const selectedOption = selected && !available.some(s=>s.id===selected.id) ? `<option value="${esc(selected.id)}" selected>${esc(selected.name)} (currently unavailable)</option>` : '';
+  const options = `<option value="">Keep pending / unassigned</option>${selectedOption}` + available.filter(s=>s.id!==b.staff_id).map(s => `<option value="${esc(s.id)}" ${s.id === b.staff_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
   return `<tr>
     <td><strong>${esc(b.booking_ref || b.id)}</strong><small>${esc((b.created_at || '').slice(0,10))}</small></td>
     <td><strong>${esc(b.name)}</strong><small>${esc(b.email || '')}</small></td>
     <td><strong>${fmtDate(b.date)}</strong><small>${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}</small></td>
     <td>${esc(b.type || '')}</td>
-    <td class="address-cell" title="${esc(b.address || '')}">${esc(b.address || 'No address provided')}</td>
     <td><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
     <td><span class="status status-${esc(b.status)}">${esc(b.status)}</span></td>
     <td><strong>${money(b.price)}</strong><small>${esc(settings.currency || 'USD')}</small></td>
@@ -268,6 +275,63 @@ function renderBookingRow(b){
   </tr>`;
 }
 
+const STAFF_STATUS = {
+  available:{label:'Available',detail:'Can receive assignments'},
+  unavailable:{label:'Unavailable',detail:'Temporarily unavailable'},
+  leave:{label:'On Leave',detail:'Approved leave'},
+  sick:{label:'Sick Off',detail:'Unavailable due to illness'},
+  day_off:{label:'Day Off',detail:'Scheduled day off'},
+  inactive:{label:'Inactive',detail:'Not in dispatch pool'}
+};
+
+function getStaffStatus(staffId,date){
+  const member = staff.find(s => s.id === staffId);
+  if(!member || !member.active) return 'inactive';
+  const matches = staffAvailability.filter(a => a.staff_id === staffId && a.start_date <= date && (!a.end_date || a.end_date >= date));
+  if(!matches.length) return 'available';
+  return matches.sort((a,b)=>String(b.start_date).localeCompare(String(a.start_date)))[0].status || 'available';
+}
+
+function isStaffAssignable(staffId,date){
+  return getStaffStatus(staffId,date) === 'available';
+}
+
+function openStaffStatus(staffId){
+  const member = staff.find(s=>s.id===staffId);
+  if(!member) return;
+  $('staffStatusId').value = staffId;
+  $('staffStatusTitle').textContent = `Availability — ${member.name}`;
+  const current = getStaffStatus(staffId,new Date().toISOString().slice(0,10));
+  $('staffStatusSelect').value = current;
+  $('staffStatusStart').value = new Date().toISOString().slice(0,10);
+  $('staffStatusEnd').value = new Date().toISOString().slice(0,10);
+  $('staffStatusReason').value = '';
+  $('staffStatusModal').classList.add('open');
+  $('staffStatusModal').setAttribute('aria-hidden','false');
+}
+
+function closeStaffStatus(){
+  $('staffStatusModal').classList.remove('open');
+  $('staffStatusModal').setAttribute('aria-hidden','true');
+}
+
+async function saveStaffStatus(){
+  const staffId=$('staffStatusId').value, status=$('staffStatusSelect').value;
+  const start=$('staffStatusStart').value, end=$('staffStatusEnd').value, reason=$('staffStatusReason').value.trim();
+  if(!staffId || !start || !end){toast('Choose a staff member and date range.');return;}
+  if(end < start){toast('End date cannot be before start date.');return;}
+  if(status==='available'){
+    const {error}=await sb.from('staff_availability').insert({staff_id:staffId,status:'available',start_date:start,end_date:end,reason:reason||'Available'});
+    if(error){toast(error.message);return;}
+  } else {
+    const {error}=await sb.from('staff_availability').insert({staff_id:staffId,status,start_date:start,end_date:end,reason});
+    if(error){toast(error.message);return;}
+  }
+  const member=staff.find(s=>s.id===staffId);
+  await writeAudit(`${member?.name || 'Staff member'} availability changed to ${STAFF_STATUS[status].label} (${start} to ${end}).`);
+  closeStaffStatus(); toast(`${member?.name || 'Staff member'} is now ${STAFF_STATUS[status].label}.`); await loadData();
+}
+
 function renderStaff(){
   const today = new Date().toISOString().slice(0,10);
   $('staffList').innerHTML = staff.length ? staff.map(s => {
@@ -275,8 +339,11 @@ function renderStaff(){
     const pct = Math.min(hours/40*100,100);
     const initials = s.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
     const label = hours >= 40 ? 'At capacity' : hours >= 30 ? 'Busy' : hours >= 20 ? 'On target' : 'Available';
-    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${s.active ? 'Active professional' : 'Inactive'}</small></div></div><div class="capacity-label">${label} · ${hours.toFixed(1)}h / 40h</div><div class="mini-bar"><span style="width:${pct}%"></span></div></article>`;
+    const status = getStaffStatus(s.id,today);
+    const meta = STAFF_STATUS[status] || STAFF_STATUS.available;
+    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${s.active ? 'Active professional' : 'Inactive'}</small></div></div><div class="staff-status-line"><span class="availability-dot availability-${status}"></span><strong>${esc(meta.label)}</strong><small>${esc(meta.detail)}</small></div><div class="capacity-label">${label} · ${hours.toFixed(1)}h / 40h</div><div class="mini-bar"><span style="width:${pct}%"></span></div><button class="btn btn-secondary staff-status-btn" type="button" data-staff-status="${esc(s.id)}">Change availability</button></article>`;
   }).join('') : `<div class="empty-state"><strong>No staff members</strong><small>Add your first professional.</small></div>`;
+  document.querySelectorAll('[data-staff-status]').forEach(btn => btn.addEventListener('click',() => openStaffStatus(btn.dataset.staffStatus)));
 }
 
 function renderAudit(){
@@ -312,7 +379,7 @@ async function assignBooking(bookingId,staffId){
 async function bookingAction(type,id){
   const booking = bookings.find(b => b.id === id);
   if(!booking) return;
-  if(type === 'invoice') return sendInvoice(booking);
+  if(type === 'invoice') return openInvoicePreview(booking);
   if(type === 'print') return printInvoice(booking);
   if(type === 'complete' && !booking.staff_id){ toast('Assign a staff member before completing this booking.'); return; }
   const status = type === 'complete' ? 'completed' : 'cancelled';
@@ -325,20 +392,50 @@ async function bookingAction(type,id){
 
 async function sendInvoice(booking){
   try{
-    const {error} = await sb.functions.invoke('send-email',{body:{type:'invoice',booking:{email:booking.email,type:booking.type,date:booking.date,start_time:booking.start_time,end_time:booking.end_time,address:booking.address,price:booking.price,booking_ref:booking.booking_ref,currency:settings.currency || 'USD'},companyName:'Tidyline',logoUrl:null}});
+    if(!booking.email){ toast('This booking has no customer email address.'); return; }
+    const payload={type:'invoice',booking:{name:booking.name,email:booking.email,phone:booking.phone,type:booking.type,date:booking.date,start_time:booking.start_time,end_time:booking.end_time,address:booking.address,price:booking.price,booking_ref:booking.booking_ref,currency:settings.currency || 'USD',payment_status:booking.payment_status || 'unpaid'}};
+    const {data,error}=await sb.functions.invoke('send-email',{body:payload});
     if(error) throw error;
-    toast('Invoice email sent.');
+    if(data && data.ok === false) throw new Error(data.error || 'Email function failed.');
+    toast('Invoice email sent successfully.');
     await writeAudit(`Invoice sent for booking ${booking.booking_ref || booking.id}.`);
-  }catch(error){ console.error(error); toast('Could not send invoice email.'); }
+  }catch(error){ console.error('Invoice email error:',error); toast(`Invoice could not be sent: ${error.message || 'check email setup'}`); }
+}
+
+function invoiceHtml(booking){
+  const c=currencyInfo();
+  const total=money(booking.price);
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ${esc(booking.booking_ref||booking.id)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;padding:40px;max-width:760px;margin:auto;line-height:1.5}h1{margin:0;font-size:30px}.muted{color:#667085}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e5e7eb;padding:12px 0}.total{font-size:24px;font-weight:800;border-bottom:0}.box{background:#f7fafc;padding:18px;border-radius:12px;margin-top:24px}@media(max-width:600px){body{padding:20px}.row{gap:12px;flex-wrap:wrap}}@media print{body{padding:15mm} .no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin-bottom:20px"><button onclick="window.print()">Print invoice</button></div><h1>Tidyline</h1><div class="muted">CLEAN SPACES · BETTER LIVES</div><h2>INVOICE</h2><div class="row"><span>Invoice</span><strong>INV-${esc(booking.booking_ref||booking.id)}</strong></div><div class="row"><span>Booking</span><strong>${esc(booking.booking_ref||booking.id)}</strong></div><div class="box"><strong>Bill to</strong><p>${esc(booking.name)}<br>${esc(booking.email||'')}<br>${esc(booking.phone||'')}<br>${esc(booking.address||'')}</p></div><div class="row"><span>Service</span><strong>${esc(booking.type||'')}</strong></div><div class="row"><span>Date</span><strong>${esc(fmtDate(booking.date))}</strong></div><div class="row"><span>Time</span><strong>${esc(fmtTime(booking.start_time))} – ${esc(fmtTime(booking.end_time))}</strong></div><div class="row"><span>Payment status</span><strong>${esc((booking.payment_status||'unpaid').toUpperCase())}</strong></div><div class="row total"><span>Total</span><strong>${esc(total)}</strong></div><p class="muted">Currency: ${esc(c.code)} · Thank you for choosing Tidyline.</p></body></html>`;
 }
 
 function printInvoice(booking){
-  const c=currencyInfo();
-  const total=money(booking.price);
-  const win=window.open('', '_blank', 'noopener,noreferrer,width=850,height=900');
-  if(!win){toast('Please allow pop-ups to print the invoice.');return;}
-  win.document.write(`<!doctype html><html><head><title>Invoice ${esc(booking.booking_ref||booking.id)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;padding:48px;max-width:760px;margin:auto}h1{margin:0 0 4px;font-size:30px}h2{margin-top:40px}.muted{color:#667085}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e5e7eb;padding:12px 0}.total{font-size:24px;font-weight:800;border-bottom:0}.box{background:#f7fafc;padding:18px;border-radius:12px;margin-top:24px}@media print{body{padding:20px}}</style></head><body><h1>Tidyline</h1><div class="muted">CLEAN SPACES · BETTER LIVES</div><h2>INVOICE</h2><div class="row"><span>Invoice</span><strong>INV-${esc(booking.booking_ref||booking.id)}</strong></div><div class="row"><span>Booking</span><strong>${esc(booking.booking_ref||booking.id)}</strong></div><div class="box"><strong>Bill to</strong><p>${esc(booking.name)}<br>${esc(booking.email||'')}<br>${esc(booking.phone||'')}<br>${esc(booking.address||'')}</p></div><div class="row"><span>Service</span><strong>${esc(booking.type||'')}</strong></div><div class="row"><span>Date</span><strong>${esc(fmtDate(booking.date))}</strong></div><div class="row"><span>Time</span><strong>${esc(fmtTime(booking.start_time))} – ${esc(fmtTime(booking.end_time))}</strong></div><div class="row"><span>Payment status</span><strong>${esc((booking.payment_status||'unpaid').toUpperCase())}</strong></div><div class="row total"><span>Total</span><strong>${esc(total)}</strong></div><p class="muted">Currency: ${esc(c.code)} · Thank you for choosing Tidyline.</p><script>window.onload=()=>window.print();<\/script></body></html>`);
-  win.document.close();
+  const html=invoiceHtml(booking);
+  const win=window.open('', '_blank');
+  if(win){
+    win.document.open(); win.document.write(html); win.document.close();
+    setTimeout(()=>{try{win.focus();win.print();}catch(e){console.warn(e);}},500);
+    return;
+  }
+  // Popup-blocker fallback: print through a temporary iframe.
+  const iframe=document.createElement('iframe');
+  iframe.style.position='fixed'; iframe.style.width='1px'; iframe.style.height='1px'; iframe.style.border='0'; iframe.style.right='0'; iframe.style.bottom='0';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentWindow.document; doc.open(); doc.write(html); doc.close();
+  setTimeout(()=>{try{iframe.contentWindow.focus();iframe.contentWindow.print();}finally{setTimeout(()=>iframe.remove(),1000);}},300);
+}
+
+function openInvoicePreview(booking){
+  let modal=$('invoicePreviewModal');
+  if(!modal){
+    modal=document.createElement('div'); modal.id='invoicePreviewModal'; modal.className='modal'; modal.setAttribute('aria-hidden','true');
+    modal.innerHTML='<div class="modal-card invoice-preview-card" role="dialog" aria-modal="true"><button class="modal-close" id="closeInvoicePreview" type="button" aria-label="Close invoice">×</button><div id="invoicePreviewContent"></div><div class="invoice-actions"><button class="btn btn-secondary" id="previewPrintBtn" type="button">Print invoice</button><button class="btn btn-primary" id="previewSendBtn" type="button">Send invoice by email</button></div></div>';
+    document.body.appendChild(modal);
+    $('closeInvoicePreview').addEventListener('click',()=>{modal.classList.remove('open');modal.setAttribute('aria-hidden','true');});
+  }
+  $('invoicePreviewContent').innerHTML=invoiceHtml(booking).replace(/<html>|<\/html>|<head>[\s\S]*?<\/head>|<body>|<\/body>/gi,'');
+  $('previewPrintBtn').onclick=()=>printInvoice(booking);
+  $('previewSendBtn').onclick=()=>sendInvoice(booking);
+  modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
 }
 
 function switchView(view){
@@ -460,6 +557,8 @@ function bindEvents(){
   $('saveSettings').addEventListener('click',saveSettings);
   $('exportBtn').addEventListener('click',exportCsv);
   $('addStaffForm').addEventListener('submit',addStaff);
+  $('closeStaffStatus').addEventListener('click',closeStaffStatus);
+  $('saveStaffStatus').addEventListener('click',saveStaffStatus);
   $('searchBookings').addEventListener('input',renderBookings);
   $('statusFilter').addEventListener('change',renderBookings);
   $('overviewBookingsBtn').addEventListener('click',() => switchView('bookings'));
