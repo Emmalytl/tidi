@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('RESEND_API_KEY');
     const from = Deno.env.get('EMAIL_FROM') || 'Tidyline <onboarding@resend.dev>';
     if (!apiKey) throw new Error('RESEND_API_KEY is not configured in Supabase secrets.');
-    if (!booking?.email) throw new Error('Booking email is required.');
 
     const symbol = currency(booking.currency || 'USD');
     const price = `${symbol}${Number(booking.price || 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -42,7 +41,20 @@ Deno.serve(async (req) => {
       body = `<p>Hi ${esc(booking.name || 'there')},</p><p>Your booking has been assigned to <b>${esc(booking.staff_name || 'a Tidyline professional')}</b>.</p>${details}`;
     }
 
-    const payload = { from, to: [booking.email], subject, html: layout(title, body) };
+    let to: string[] = [];
+    if (type === 'admin_booking') {
+      const adminEmail = Deno.env.get('ADMIN_EMAIL');
+      if (!adminEmail) throw new Error('ADMIN_EMAIL is not configured in Supabase secrets.');
+      to = [adminEmail];
+      subject = `Tidyline new booking — ${booking.booking_ref || booking.id}`;
+      title = 'New booking requires assignment';
+      body = `<p>A new booking has been submitted and is waiting for admin assignment.</p>${details}<p><b>Customer:</b> ${esc(booking.name || '')}<br><b>Email:</b> ${esc(booking.email || '')}<br><b>Phone:</b> ${esc(booking.phone || '')}</p><p><b>Status:</b> PENDING</p>`;
+    } else {
+      if (!booking?.email) throw new Error('Booking email is required.');
+      to = [booking.email];
+    }
+
+    const payload = { from, to, subject, html: layout(title, body) };
     const response = await fetch('https://api.resend.com/emails', { method:'POST', headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     const result = await response.json();
     if (!response.ok) throw new Error(result?.message || 'Email provider rejected the request.');

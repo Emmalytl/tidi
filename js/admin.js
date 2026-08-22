@@ -10,8 +10,8 @@ let logs = [];
 let settings = { price_standard:45, price_deep:65, price_moveinout:55, price_office:50, currency:'USD' };
 let staffAvailability = [];
 const CURRENCIES = { USD:{code:'USD',symbol:'$',name:'US Dollar'}, GHS:{code:'GHS',symbol:'GH₵',name:'Ghana Cedi'}, EUR:{code:'EUR',symbol:'€',name:'Euro'}, GBP:{code:'GBP',symbol:'£',name:'British Pound'} };
-function currencyInfo(){ return CURRENCIES[settings.currency] || CURRENCIES.USD; }
-function money(value){ const c=currencyInfo(); return `${c.symbol}${Number(value||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
+function currencyInfo(code=settings.currency){ return CURRENCIES[code] || CURRENCIES.USD; }
+function money(value,code=settings.currency){ const c=currencyInfo(code); return `${c.symbol}${Number(value||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
 let adminSessionActive = false;
 let inactivityTimer = null;
 let warningTimer = null;
@@ -171,8 +171,18 @@ function applyFixedBrand(){
 }
 
 async function loadSettings(){
-  const {data,error} = await sb.from('settings').select('price_standard,price_deep,price_moveinout,price_office,currency').eq('id',1).single();
-  if(!error && data) settings = {...settings,...data};
+  const defaults={id:1,price_standard:45,price_deep:65,price_moveinout:55,price_office:50,currency:'USD'};
+  try{
+    const {data,error}=await sb.from('settings').select('id,price_standard,price_deep,price_moveinout,price_office,currency').eq('id',1).maybeSingle();
+    if(error) console.warn('Settings load failed:',error.message);
+    if(data) settings={...settings,...data};
+    else {
+      const {data:created,error:createError}=await sb.from('settings').upsert(defaults,{onConflict:'id'}).select().maybeSingle();
+      if(!createError && created) settings={...settings,...created};
+      else if(createError) console.warn('Could not initialize settings; using safe defaults:',createError.message);
+    }
+  }catch(e){ console.warn('Settings initialization failed; using safe defaults:',e); }
+  settings.currency=CURRENCIES[settings.currency] ? settings.currency : 'USD';
   applyFixedBrand();
 }
 
@@ -207,7 +217,7 @@ function renderStats(){
   const pending = bookings.filter(b => b.status === 'pending').length;
   const assigned = bookings.filter(b => b.status === 'assigned').length;
   const completed = bookings.filter(b => b.status === 'completed').length;
-  const revenue = bookings.filter(b => b.status !== 'cancelled').reduce((sum,b) => sum + Number(b.price || 0),0);
+  const currentCurrency=currencyInfo().code; const revenue = bookings.filter(b => b.status !== 'cancelled' && (b.currency || currentCurrency) === currentCurrency).reduce((sum,b) => sum + Number(b.price || 0),0);
   const stats = [
     ['Total bookings',bookings.length,'All requests'],
     ['Pending',pending,'Awaiting dispatch'],
@@ -266,7 +276,7 @@ function renderBookingRow(b){
     <td>${esc(b.type || '')}</td>
     <td><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
     <td><span class="status status-${esc(b.status)}">${esc(b.status)}</span></td>
-    <td><strong>${money(b.price)}</strong><small>${esc(settings.currency || 'USD')}</small></td>
+    <td><strong>${money(b.price,b.currency || settings.currency)}</strong><small>${esc(b.currency || settings.currency || 'USD')}</small></td>
     <td><div class="action-row">
       ${b.status !== 'completed' && b.status !== 'cancelled' ? `<button data-action="complete" data-id="${esc(b.id)}">Complete</button>` : ''}
       ${b.status !== 'cancelled' ? `<button data-action="cancel" data-id="${esc(b.id)}">Cancel</button>` : ''}
@@ -369,6 +379,8 @@ async function assignBooking(bookingId,staffId){
   }
 
   const member = staff.find(s => s.id === staffId);
+  if(!member || !member.active){ toast('That staff member is not active.'); return; }
+  if(!isStaffAssignable(staffId, booking.date)){ toast(`${member.name} is not available on ${fmtDate(booking.date)}.`); return; }
   const {error} = await sb.from('bookings').update({staff_id:staffId,status:'assigned'}).eq('id',bookingId);
   if(error){toast(error.message);return;}
   await writeAudit(`Booking ${booking.booking_ref || bookingId} assigned to ${member?.name || 'staff member'}.`);
@@ -393,7 +405,7 @@ async function bookingAction(type,id){
 async function sendInvoice(booking){
   try{
     if(!booking.email){ toast('This booking has no customer email address.'); return; }
-    const payload={type:'invoice',booking:{name:booking.name,email:booking.email,phone:booking.phone,type:booking.type,date:booking.date,start_time:booking.start_time,end_time:booking.end_time,address:booking.address,price:booking.price,booking_ref:booking.booking_ref,currency:settings.currency || 'USD',payment_status:booking.payment_status || 'unpaid'}};
+    const payload={type:'invoice',booking:{name:booking.name,email:booking.email,phone:booking.phone,type:booking.type,date:booking.date,start_time:booking.start_time,end_time:booking.end_time,address:booking.address,price:booking.price,booking_ref:booking.booking_ref,currency:booking.currency || settings.currency || 'USD',payment_status:booking.payment_status || 'unpaid'}};
     const {data,error}=await sb.functions.invoke('send-email',{body:payload});
     if(error) throw error;
     if(data && data.ok === false) throw new Error(data.error || 'Email function failed.');
@@ -404,8 +416,19 @@ async function sendInvoice(booking){
 
 function invoiceHtml(booking){
   const c=currencyInfo();
-  const total=money(booking.price);
+  const total=money(booking.price,booking.currency || settings.currency);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ${esc(booking.booking_ref||booking.id)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;padding:40px;max-width:760px;margin:auto;line-height:1.5}h1{margin:0;font-size:30px}.muted{color:#667085}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e5e7eb;padding:12px 0}.total{font-size:24px;font-weight:800;border-bottom:0}.box{background:#f7fafc;padding:18px;border-radius:12px;margin-top:24px}@media(max-width:600px){body{padding:20px}.row{gap:12px;flex-wrap:wrap}}@media print{body{padding:15mm} .no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin-bottom:20px"><button onclick="window.print()">Print invoice</button></div><h1>Tidyline</h1><div class="muted">CLEAN SPACES · BETTER LIVES</div><h2>INVOICE</h2><div class="row"><span>Invoice</span><strong>INV-${esc(booking.booking_ref||booking.id)}</strong></div><div class="row"><span>Booking</span><strong>${esc(booking.booking_ref||booking.id)}</strong></div><div class="box"><strong>Bill to</strong><p>${esc(booking.name)}<br>${esc(booking.email||'')}<br>${esc(booking.phone||'')}<br>${esc(booking.address||'')}</p></div><div class="row"><span>Service</span><strong>${esc(booking.type||'')}</strong></div><div class="row"><span>Date</span><strong>${esc(fmtDate(booking.date))}</strong></div><div class="row"><span>Time</span><strong>${esc(fmtTime(booking.start_time))} – ${esc(fmtTime(booking.end_time))}</strong></div><div class="row"><span>Payment status</span><strong>${esc((booking.payment_status||'unpaid').toUpperCase())}</strong></div><div class="row total"><span>Total</span><strong>${esc(total)}</strong></div><p class="muted">Currency: ${esc(c.code)} · Thank you for choosing Tidyline.</p></body></html>`;
+}
+
+function downloadInvoice(booking){
+  const blob=new Blob([invoiceHtml(booking)],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`invoice-${booking.booking_ref || booking.id}.html`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Invoice downloaded. Open it and choose Print → Save as PDF if needed.');
 }
 
 function printInvoice(booking){
@@ -428,12 +451,13 @@ function openInvoicePreview(booking){
   let modal=$('invoicePreviewModal');
   if(!modal){
     modal=document.createElement('div'); modal.id='invoicePreviewModal'; modal.className='modal'; modal.setAttribute('aria-hidden','true');
-    modal.innerHTML='<div class="modal-card invoice-preview-card" role="dialog" aria-modal="true"><button class="modal-close" id="closeInvoicePreview" type="button" aria-label="Close invoice">×</button><div id="invoicePreviewContent"></div><div class="invoice-actions"><button class="btn btn-secondary" id="previewPrintBtn" type="button">Print invoice</button><button class="btn btn-primary" id="previewSendBtn" type="button">Send invoice by email</button></div></div>';
+    modal.innerHTML='<div class="modal-card invoice-preview-card" role="dialog" aria-modal="true"><button class="modal-close" id="closeInvoicePreview" type="button" aria-label="Close invoice">×</button><div id="invoicePreviewContent"></div><div class="invoice-actions"><button class="btn btn-secondary" id="previewPrintBtn" type="button">Print / Save PDF</button><button class="btn btn-secondary" id="previewDownloadBtn" type="button">Download invoice</button><button class="btn btn-primary" id="previewSendBtn" type="button">Send invoice by email</button></div></div>';
     document.body.appendChild(modal);
     $('closeInvoicePreview').addEventListener('click',()=>{modal.classList.remove('open');modal.setAttribute('aria-hidden','true');});
   }
   $('invoicePreviewContent').innerHTML=invoiceHtml(booking).replace(/<html>|<\/html>|<head>[\s\S]*?<\/head>|<body>|<\/body>/gi,'');
   $('previewPrintBtn').onclick=()=>printInvoice(booking);
+  $('previewDownloadBtn').onclick=()=>downloadInvoice(booking);
   $('previewSendBtn').onclick=()=>sendInvoice(booking);
   modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
 }
@@ -507,7 +531,7 @@ async function addStaff(event){
 
 function exportCsv(){
   const headers = ['Booking Reference','Customer Name','Email','Phone','Address','Service','Date','Start Time','End Time','Staff','Status','Payment Status','Currency','Price','Created At'];
-  const lines = [headers,...bookings.map(b => [b.booking_ref || b.id,b.name,b.email,b.phone || '',b.address || '',b.type,b.date,b.start_time,b.end_time,staff.find(s=>s.id===b.staff_id)?.name || '',b.status,b.payment_status || 'unpaid',settings.currency || 'USD',Number(b.price || 0).toFixed(2),b.created_at || ''])]
+  const lines = [headers,...bookings.map(b => [b.booking_ref || b.id,b.name,b.email,b.phone || '',b.address || '',b.type,b.date,b.start_time,b.end_time,staff.find(s=>s.id===b.staff_id)?.name || '',b.status,b.payment_status || 'unpaid',(b.currency || settings.currency || 'USD'),Number(b.price || 0).toFixed(2),b.created_at || ''])]
     .map(row => row.map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(','));
   const blob = new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);

@@ -80,3 +80,37 @@ See `docs/EMAIL-SETUP.md` for transactional email configuration.
 
 ## Staff availability
 Run `supabase/migrations/004_staff_availability.sql` after the other migrations to enable Available, Unavailable, On Leave, Sick Off, Day Off and Inactive staff statuses.
+
+
+## Tidyline Final Web Build — setup checklist
+
+1. Run Supabase migrations in order:
+   - `001_professional_upgrade.sql`
+   - `002_no_automatic_staff_assignment.sql`
+   - `003_currency_and_email.sql`
+   - `004_staff_availability.sql`
+   - `005_final_web_hardening.sql`
+
+2. In Supabase Edge Function secrets configure:
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM` (for example `Tidyline <noreply@yourverifieddomain.com>`)
+   - `ADMIN_EMAIL` (address that receives new-booking alerts)
+
+3. Deploy the email function:
+   `supabase functions deploy send-email`
+
+4. GitHub Pages:
+   - Keep `index.html`, `admin.html`, `config.js`, `style.css`, `admin.css`, `js/`, `assets/` at repository root.
+   - The Supabase publishable/anon key belongs in `config.js`; never put a service-role key in the frontend.
+
+5. Admin workflow:
+   - New bookings are always Pending and unassigned.
+   - Staff availability/leave is checked before assignment.
+   - Address is intentionally hidden from the main booking table but remains available in the booking record, invoice and CSV export.
+   - Currency is captured on each new booking so changing the default currency does not rewrite old booking amounts.
+
+6. Invoice:
+   - `Invoice` opens an in-app preview.
+   - `Print / Save PDF` opens the browser print dialog.
+   - `Download invoice` saves an HTML invoice that can be printed to PDF.
+   - `Send invoice by email` uses the Supabase `send-email` Edge Function.

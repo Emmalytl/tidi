@@ -14,11 +14,80 @@ function fmtDate(v){return new Date(v+'T00:00:00').toLocaleDateString(undefined,
 function fmtTime(v){if(!v)return '';const [h,m]=v.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`}
 function durationHours(a,b){if(!a||!b)return 0;let [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number);let n=(bh*60+bm)-(ah*60+am);return n<0?n+1440:n? n/60:0}
 function applyBranding(){const n='Tidyline';$('brandName').textContent=n;$('footerBrand').textContent=n;$('footerBrandSmall').textContent=n;document.title=`${n} — Professional cleaning, simply booked`;[['rate_standard',settingsState.price_standard],['rate_deep',settingsState.price_deep],['rate_moveinout',settingsState.price_moveinout],['rate_office',settingsState.price_office]].forEach(([id,v])=>$(id).textContent=`${(CURRENCIES[settingsState.currency]||CURRENCIES.USD).symbol}${Number(v||0).toFixed(0)}/hr`)}
-async function loadSettings(){try{const {data}=await sb.from('settings').select('*').eq('id',1).single();if(data)settingsState=data}catch(e){console.warn(e)}applyBranding()}
-function updateEstimate(){const hrs=durationHours($('f_start').value,$('f_end').value);const type=$('f_type').value;const rate={"Standard clean":settingsState.price_standard,"Deep clean":settingsState.price_deep,"Move-in / move-out":settingsState.price_moveinout,"Office clean":settingsState.price_office}[type]||0;if(hrs){$('durationPreview').textContent=`${hrs.toFixed(1)} hour${hrs===1?'':'s'} × ${money(rate)}/hr`;$('pricePreview').textContent=money(hrs*Number(rate))}else{$('durationPreview').textContent='Select a time window';$('pricePreview').textContent='—'}}
-async function sendBookingEmail(booking){try{const {error}=await sb.functions.invoke('send-email',{body:{type:'booking_confirmation',booking,currency:settingsState.currency||'USD',companyName:'Tidyline'}});if(error)throw error;return true}catch(e){console.error(e);return false}}
-$('bookingForm').addEventListener('input',updateEstimate);$('bookingForm').addEventListener('change',updateEstimate);
-$('bookingForm').addEventListener('submit',async e=>{e.preventDefault();const start=$('f_start').value,end=$('f_end').value,date=$('f_date').value;if(!start||!end||start>=end){toast('Please choose a valid start and end time.');return}if(!date||date<new Date().toISOString().slice(0,10)){toast('Please choose a future service date.');return}const email=$('f_email').value.trim();if(!/^\S+@\S+\.\S+$/.test(email)){toast('Please enter a valid email address.');return}const btn=$('submitBtn');btn.disabled=true;btn.innerHTML='Processing booking…';const id='b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);const draft={id,name:$('f_name').value.trim(),phone:$('f_phone').value.trim(),email,address:$('f_address').value.trim(),date,start,end,type:$('f_type').value,notes:$('f_notes').value.trim()};try{const {data,error}=await sb.rpc('create_booking',{p_id:id,p_name:draft.name,p_phone:draft.phone,p_email:draft.email,p_address:draft.address,p_date:draft.date,p_start:start,p_end:end,p_type:draft.type,p_notes:draft.notes});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(!r)throw new Error('No booking result returned.');$('bookingCard').hidden=true;$('confirmCard').hidden=false;$('confirmTitle').textContent=`Thanks, ${draft.name.split(' ')[0]||'there'}.`;$('confirmDetail').textContent=`${draft.type} on ${fmtDate(draft.date)} from ${fmtTime(start)} to ${fmtTime(end)} at ${draft.address}.`;$('confirmRef').textContent=r.booking_ref||r.assigned_booking_ref||id;$('confirmStaff').textContent='Pending admin assignment';$('confirmPrice').textContent=money(r.price);const sent=await sendBookingEmail({email:draft.email,name:draft.name,phone:draft.phone,type:draft.type,date:draft.date,start_time:start,end_time:end,address:draft.address,price:r.price,booking_ref:r.booking_ref||id,status:'pending'});if(!sent)toast('Booking confirmed, but the email could not be sent.');$('confirmCard').scrollIntoView({behavior:'smooth',block:'center'})}catch(err){console.error(err);toast(err.message||'We could not create your booking. Please try again.')}finally{btn.disabled=false;btn.innerHTML='Confirm booking request <span>→</span>'}});
+async function loadSettings(){
+  try{
+    const {data,error}=await sb.from('settings').select('*').eq('id',1).maybeSingle();
+    if(error) console.warn('Settings could not be loaded; using safe defaults:', error.message);
+    if(data) settingsState={...settingsState,...data};
+  }catch(e){ console.warn('Settings load failed; using safe defaults:',e); }
+  applyBranding();
+}
+function updateEstimate(){
+  const start=$('f_start')?.value||'',end=$('f_end')?.value||'',type=$('f_type')?.value||'Standard clean';
+  const hrs=durationHours(start,end);
+  const rate={"Standard clean":settingsState.price_standard,"Deep clean":settingsState.price_deep,"Move-in / move-out":settingsState.price_moveinout,"Office clean":settingsState.price_office}[type]||0;
+  if(hrs){if($('durationPreview')) $('durationPreview').textContent=`${hrs.toFixed(1)} hour${hrs===1?'':'s'} × ${money(rate)}/hr`;if($('pricePreview')) $('pricePreview').textContent=money(hrs*Number(rate))}
+  else {if($('durationPreview')) $('durationPreview').textContent='Select a time window';if($('pricePreview')) $('pricePreview').textContent='—'}
+}
+async function sendBookingEmail(booking){
+  try{
+    const {data,error}=await sb.functions.invoke('send-email',{body:{type:'booking_confirmation',booking,currency:settingsState.currency||'USD',companyName:'Tidyline'}});
+    if(error) throw error;
+    return data?.ok !== false;
+  }catch(e){ console.error('Booking email:',e); return false; }
+}
+
+async function sendAdminBookingEmail(booking){
+  try{
+    await sb.functions.invoke('send-email',{body:{type:'admin_booking',booking,currency:settingsState.currency||'USD',companyName:'Tidyline'}});
+  }catch(e){ console.warn('Admin notification email failed:',e); }
+}
+
+function initBookingForm(){
+  const form=$('bookingForm');
+  if(!form) return;
+  const update=()=>updateEstimate();
+  form.addEventListener('input',update);
+  form.addEventListener('change',update);
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const start=$('f_start')?.value,end=$('f_end')?.value,date=$('f_date')?.value;
+    if(!start||!end||start>=end){toast('Please choose a valid start and end time.');return}
+    if(!date||date<new Date().toISOString().slice(0,10)){toast('Please choose a future service date.');return}
+    const email=$('f_email')?.value.trim()||'';
+    if(!/^\S+@\S+\.\S+$/.test(email)){toast('Please enter a valid email address.');return}
+    const name=$('f_name')?.value.trim()||'';
+    const address=$('f_address')?.value.trim()||'';
+    if(!name||!address){toast('Please complete your name and service address.');return}
+    const btn=$('submitBtn'); if(btn){btn.disabled=true;btn.innerHTML='Processing booking…'}
+    const id='b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const draft={id,name,phone:$('f_phone')?.value.trim()||'',email,address,date,start,end,type:$('f_type')?.value||'Standard clean',notes:$('f_notes')?.value.trim()||''};
+    try{
+      const {data,error}=await sb.rpc('create_booking',{p_id:id,p_name:draft.name,p_phone:draft.phone,p_email:draft.email,p_address:draft.address,p_date:draft.date,p_start:start,p_end:end,p_type:draft.type,p_notes:draft.notes});
+      if(error) throw error;
+      const r=Array.isArray(data)?data[0]:data;
+      if(!r) throw new Error('No booking result returned. Please check the database function.');
+      const bookingRef=r.booking_ref||r.assigned_booking_ref||id;
+      const card=$('bookingCard'), confirm=$('confirmCard');
+      if(card) card.hidden=true;
+      if(confirm) confirm.hidden=false;
+      if($('confirmTitle')) $('confirmTitle').textContent=`Thanks, ${draft.name.split(' ')[0]||'there'}.`;
+      if($('confirmDetail')) $('confirmDetail').textContent=`${draft.type} on ${fmtDate(draft.date)} from ${fmtTime(start)} to ${fmtTime(end)} at ${draft.address}.`;
+      if($('confirmRef')) $('confirmRef').textContent=bookingRef;
+      if($('confirmStaff')) $('confirmStaff').textContent='Pending admin assignment';
+      if($('confirmPrice')) $('confirmPrice').textContent=money(r.price);
+      const bookingPayload={...draft, start_time:start,end_time:end,price:r.price,booking_ref:bookingRef,status:'pending',currency:r.currency||settingsState.currency||'USD'};
+      const sent=await sendBookingEmail(bookingPayload);
+      void sendAdminBookingEmail(bookingPayload);
+      if($('confirmEmailStatus')){
+        $('confirmEmailStatus').textContent=sent?'✓ Confirmation email sent successfully.':'Your booking is saved. We could not send the confirmation email right now.';
+        $('confirmEmailStatus').classList.toggle('email-failed',!sent);
+      } else if(!sent) toast('Booking confirmed, but the email could not be sent.');
+      if(confirm) confirm.scrollIntoView({behavior:'smooth',block:'center'});
+    }catch(err){console.error(err);toast(err.message||'We could not create your booking. Please try again.')}
+    finally{if(btn){btn.disabled=false;btn.innerHTML='Confirm booking request <span>→</span>'}}
+  });
+}
 
 // Public-site interactions: scroll reveals, animated proof counters and service-card shortcuts.
 function initHomeInteractions(){
@@ -31,5 +100,20 @@ function initHomeInteractions(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initHomeInteractions);else initHomeInteractions();
 
-function resetBooking(){$('bookingForm').reset();$('bookingCard').hidden=false;$('confirmCard').hidden=true;$('f_date').min=new Date().toISOString().slice(0,10);updateEstimate();$('book').scrollIntoView({behavior:'smooth'})}
-window.resetBooking=resetBooking;$('year').textContent=new Date().getFullYear();$('f_date').min=new Date().toISOString().slice(0,10);loadSettings().then(updateEstimate);
+function resetBooking(){
+  const form=$('bookingForm'); if(form) form.reset();
+  if($('bookingCard')) $('bookingCard').hidden=false;
+  if($('confirmCard')) $('confirmCard').hidden=true;
+  if($('f_date')) $('f_date').min=new Date().toISOString().slice(0,10);
+  updateEstimate();
+  $('book')?.scrollIntoView({behavior:'smooth'});
+}
+window.resetBooking=resetBooking;
+
+function bootPublicSite(){
+  if($('year')) $('year').textContent=new Date().getFullYear();
+  if($('f_date')) $('f_date').min=new Date().toISOString().slice(0,10);
+  initBookingForm();
+  loadSettings().then(()=>updateEstimate());
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bootPublicSite); else bootPublicSite;
