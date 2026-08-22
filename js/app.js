@@ -71,9 +71,10 @@ function initBookingForm(){
       const card=$('bookingCard'), confirm=$('confirmCard');
       if(card) card.hidden=true;
       if(confirm) confirm.hidden=false;
-      if($('confirmTitle')) $('confirmTitle').textContent=`Thanks, ${draft.name.split(' ')[0]||'there'}.`;
+      if($('confirmTitle')) $('confirmTitle').textContent='Thank you for booking.';
       if($('confirmDetail')) $('confirmDetail').textContent=`${draft.type} on ${fmtDate(draft.date)} from ${fmtTime(start)} to ${fmtTime(end)} at ${draft.address}.`;
       if($('confirmRef')) $('confirmRef').textContent=bookingRef;
+      if($('confirmInvoice')) $('confirmInvoice').textContent=`INV-${bookingRef}`;
       if($('confirmStaff')) $('confirmStaff').textContent='Pending admin assignment';
       if($('confirmPrice')) $('confirmPrice').textContent=money(r.price);
       const bookingPayload={...draft, start_time:start,end_time:end,price:r.price,booking_ref:bookingRef,status:'pending',currency:r.currency||settingsState.currency||'USD'};
@@ -101,12 +102,8 @@ function initHomeInteractions(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initHomeInteractions);else initHomeInteractions();
 
 function resetBooking(){
-  const form=$('bookingForm'); if(form) form.reset();
-  if($('bookingCard')) $('bookingCard').hidden=false;
-  if($('confirmCard')) $('confirmCard').hidden=true;
-  if($('f_date')) $('f_date').min=new Date().toISOString().slice(0,10);
-  updateEstimate();
-  $('book')?.scrollIntoView({behavior:'smooth'});
+  // A fresh booking starts from a clean page so all booking fields and confirmation state are reset.
+  window.location.reload();
 }
 window.resetBooking=resetBooking;
 
