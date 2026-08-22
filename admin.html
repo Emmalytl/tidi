@@ -101,7 +101,7 @@
           <section class="admin-card bookings-card">
             <div class="toolbar">
               <div class="search-wrap"><span>⌕</span><input id="searchBookings" type="search" placeholder="Search booking, customer or email…" aria-label="Search bookings"></div>
-              <select id="statusFilter" aria-label="Filter bookings"><option value="all">All statuses</option><option value="pending">Pending</option><option value="assigned">Assigned</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>
+              <select id="statusFilter" aria-label="Filter bookings"><option value="all">All statuses</option><option value="pending">Pending</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>
             </div>
             <div class="table-wrap">
               <table class="admin-table">
@@ -117,7 +117,7 @@
           <div class="page-heading"><div><span class="eyebrow">People & capacity</span><h2>Staff</h2><p>Assign work deliberately and keep weekly workloads visible.</p></div></div>
           <div class="staff-page-grid">
             <section class="admin-card"><div class="card-heading"><div><span class="card-kicker">Active team</span><h3>Capacity overview</h3><p>Target 20–40 hours per week.</p></div></div><div id="staffList" class="staff-grid"></div></section>
-            <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm"><label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label><button class="btn btn-primary" type="submit">Add staff member</button></form></section>
+            <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm"><label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label><button class="btn btn-primary" type="submit">Add staff member</button><small class="form-note">After adding, open the profile to enter employment, contact and salary information.</small></form></section>
           </div>
         </section>
       </main>
@@ -126,7 +126,7 @@
 
   <!-- AUDIT TRAY -->
   <aside id="auditTray" class="audit-tray" aria-hidden="true">
-    <div class="audit-head"><div><span class="eyebrow">System history</span><h2>Audit tray</h2><p>Administrative activity is kept here, away from the main dashboard.</p></div><button id="closeAudit" class="icon-btn" type="button" aria-label="Close audit tray">×</button></div>
+    <div class="audit-head"><div><span class="eyebrow">System history</span><h2>Audit tray</h2><p>Administrative activity is kept here, away from the main dashboard.</p></div><div class="audit-head-actions"><button id="clearAuditBtn" class="btn btn-secondary" type="button">Clear history</button><button id="closeAudit" class="icon-btn" type="button" aria-label="Close audit tray">×</button></div></div>
     <div id="activityList" class="audit-list"></div>
   </aside>
   <div id="auditOverlay" class="audit-overlay" hidden></div>
@@ -145,10 +145,28 @@
         <label>Office clean / hr<input id="priceOffice" type="number" min="0" step="0.01"></label>
         <label>Currency<select id="currencySelect"><option value="USD">🇺🇸 USD — US Dollar ($)</option><option value="GHS">🇬🇭 GHS — Ghana Cedi (GH₵)</option><option value="EUR">🇪🇺 EUR — Euro (€)</option><option value="GBP">🇬🇧 GBP — British Pound (£)</option></select></label>
       </div>
-      <button class="btn btn-primary" id="saveSettings" type="button">Save pricing</button>
+      <div class="settings-actions"><button class="btn btn-primary" id="saveSettings" type="button">Save pricing</button><button class="btn btn-danger" id="freshStartBtn" type="button">Fresh start / Clear system</button></div>
     </div>
   </div>
 
+
+  <!-- STAFF PROFILE -->
+  <div class="modal" id="staffProfileModal" aria-hidden="true">
+    <div class="modal-card staff-profile-modal" role="dialog" aria-modal="true" aria-labelledby="staffProfileTitle">
+      <button class="modal-close" id="closeStaffProfile" type="button" aria-label="Close staff profile">×</button>
+      <span class="eyebrow">Employee profile</span><h2 id="staffProfileTitle">Staff profile</h2>
+      <input type="hidden" id="staffProfileId">
+      <div class="profile-metrics"><div><strong id="staffWeekHours">0h</strong><small>This week</small></div><div><strong id="staffMonthHours">0h</strong><small>This month</small></div><div><strong id="staffWeekRevenue">$0.00</strong><small>Week revenue</small></div><div><strong id="staffMonthRevenue">$0.00</strong><small>Month revenue</small></div></div>
+      <div class="profile-section"><h3>Personal & employment</h3><div class="pricing-grid">
+        <label>Full name<input id="staffName" type="text"></label><label>Email<input id="staffEmail" type="email"></label><label>Phone<input id="staffPhone" type="tel"></label><label>Employee ID<input id="staffEmployeeId" type="text"></label><label>Job title<input id="staffJobTitle" type="text" placeholder="Cleaner / Supervisor"></label><label>Hire date<input id="staffHireDate" type="date"></label><label class="full-field">Address<textarea id="staffAddress" rows="2"></textarea></label>
+      </div></div>
+      <div class="profile-section"><h3>Salary & payroll</h3><div class="pricing-grid">
+        <label>Pay type<select id="staffPayType"><option value="hourly">Hourly</option><option value="monthly">Monthly salary</option></select></label><label>Hourly rate<input id="staffHourlyRate" type="number" min="0" step="0.01"></label><label>Base salary / month<input id="staffBaseSalary" type="number" min="0" step="0.01"></label><label>Tax rate %<input id="staffTaxRate" type="number" min="0" max="100" step="0.01"></label><label>Other deductions / month<input id="staffDeductions" type="number" min="0" step="0.01"></label>
+      </div><div class="salary-summary"><div><small>Gross salary</small><strong id="staffGross">$0.00</strong></div><div><small>Estimated tax</small><strong id="staffTax">$0.00</strong></div><div><small>Net salary</small><strong id="staffNet">$0.00</strong></div></div></div>
+      <div class="profile-section"><h3>Emergency contact & notes</h3><div class="pricing-grid"><label>Emergency contact<input id="staffEmergencyName" type="text"></label><label>Emergency phone<input id="staffEmergencyPhone" type="tel"></label><label class="full-field">Notes<textarea id="staffNotes" rows="3"></textarea></label></div></div>
+      <div class="profile-action-row"><button class="btn btn-secondary" id="profileAvailabilityBtn" type="button">Manage availability</button><button class="btn btn-primary" id="saveStaffProfile" type="button">Save staff profile</button></div>
+    </div>
+  </div>
 
   <!-- STAFF AVAILABILITY -->
   <div class="modal" id="staffStatusModal" aria-hidden="true">

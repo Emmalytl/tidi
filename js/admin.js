@@ -9,6 +9,7 @@ let bookings = [];
 let logs = [];
 let settings = { price_standard:45, price_deep:65, price_moveinout:55, price_office:50, currency:'USD' };
 let staffAvailability = [];
+let selectedStaffId = null;
 const CURRENCIES = { USD:{code:'USD',symbol:'$',name:'US Dollar'}, GHS:{code:'GHS',symbol:'GH₵',name:'Ghana Cedi'}, EUR:{code:'EUR',symbol:'€',name:'Euro'}, GBP:{code:'GBP',symbol:'£',name:'British Pound'} };
 function currencyInfo(code=settings.currency){ return CURRENCIES[code] || CURRENCIES.USD; }
 function money(value,code=settings.currency){ const c=currencyInfo(code); return `${c.symbol}${Number(value||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
@@ -64,11 +65,26 @@ function weekEnd(date){
   return d.toISOString().slice(0,10);
 }
 
-function staffHours(staffId,date){
-  const start = weekStart(date);
-  const end = weekEnd(date);
+function periodHoursAndRevenue(staffId,start,end){
   return bookings.filter(b => b.staff_id === staffId && b.status !== 'cancelled' && b.date >= start && b.date < end)
-    .reduce((sum,b) => sum + durationHours(b.start_time,b.end_time),0);
+    .reduce((acc,b) => { acc.hours += durationHours(b.start_time,b.end_time); acc.revenue += Number(b.price||0); return acc; },{hours:0,revenue:0});
+}
+function staffHours(staffId,date){ return periodHoursAndRevenue(staffId,weekStart(date),weekEnd(date)).hours; }
+function monthStart(date){ return `${date.slice(0,7)}-01`; }
+function monthEnd(date){ const d=new Date(`${monthStart(date)}T00:00:00`); d.setMonth(d.getMonth()+1); return d.toISOString().slice(0,10); }
+function staffMetrics(member,date=new Date().toISOString().slice(0,10)){
+  const week=periodHoursAndRevenue(member.id,weekStart(date),weekEnd(date));
+  const month=periodHoursAndRevenue(member.id,monthStart(date),monthEnd(date));
+  const payType=member.pay_type || 'hourly';
+  const hourly=Number(member.hourly_rate||0);
+  const base=Number(member.base_salary||0);
+  const standardMonthlyHours=160;
+  const overtime=Math.max(0,month.hours-standardMonthlyHours);
+  const gross=payType==='monthly' ? base + overtime*hourly*1.5 : month.hours*hourly;
+  const tax=gross*(Number(member.tax_rate||0)/100);
+  const deductions=Number(member.other_deductions||0);
+  const net=Math.max(0,gross-tax-deductions);
+  return {week,month,gross,tax,deductions,net,overtime};
 }
 
 function updateSessionStatus(text='● Active',warning=false){
@@ -256,7 +272,12 @@ function renderBookings(){
     const statusMatch = filter === 'all' || b.status === filter;
     const searchable = `${b.booking_ref || ''} ${b.id || ''} ${b.name || ''} ${b.email || ''} ${b.phone || ''} ${b.address || ''} ${b.type || ''}`.toLowerCase();
     return statusMatch && (!query || searchable.includes(query));
-  }).sort((a,b) => `${a.date}${a.start_time || ''}`.localeCompare(`${b.date}${b.start_time || ''}`));
+  }).sort((a,b) => {
+    const rank={pending:0,assigned:1,in_progress:2,completed:3,cancelled:4};
+    const sr=(rank[a.status]??9)-(rank[b.status]??9);
+    if(sr!==0) return sr;
+    return `${a.date||''}T${a.start_time||'00:00'}`.localeCompare(`${b.date||''}T${b.start_time||'00:00'}`);
+  });
 
   $('bookingRows').innerHTML = rows.length ? rows.map(renderBookingRow).join('') : `<tr><td colspan="8"><div class="empty-state"><strong>No bookings found</strong><small>Try a different search or status filter.</small></div></td></tr>`;
   document.querySelectorAll('.staff-select').forEach(select => select.addEventListener('change',() => assignBooking(select.dataset.id,select.value)));
@@ -274,13 +295,13 @@ function renderBookingRow(b){
     <td><strong>${esc(b.name)}</strong><small>${esc(b.email || '')}</small></td>
     <td><strong>${fmtDate(b.date)}</strong><small>${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}</small></td>
     <td>${esc(b.type || '')}</td>
-    <td><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
+    <td><strong>${esc(selected?.name || 'Unassigned')}</strong><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
     <td><span class="status status-${esc(b.status)}">${esc(b.status)}</span></td>
     <td><strong>${money(b.price,b.currency || settings.currency)}</strong><small>${esc(b.currency || settings.currency || 'USD')}</small></td>
     <td><div class="action-row">
       ${b.status !== 'completed' && b.status !== 'cancelled' ? `<button data-action="complete" data-id="${esc(b.id)}">Complete</button>` : ''}
       ${b.status !== 'cancelled' ? `<button data-action="cancel" data-id="${esc(b.id)}">Cancel</button>` : ''}
-      <button data-action="invoice" data-id="${esc(b.id)}">Invoice</button><button data-action="print" data-id="${esc(b.id)}">Print</button>
+      <button data-action="invoice" data-id="${esc(b.id)}">Invoice</button><button data-action="print" data-id="${esc(b.id)}">Print</button><button data-action="delete" data-id="${esc(b.id)}">Delete</button>
     </div></td>
   </tr>`;
 }
@@ -330,10 +351,11 @@ async function saveStaffStatus(){
   const start=$('staffStatusStart').value, end=$('staffStatusEnd').value, reason=$('staffStatusReason').value.trim();
   if(!staffId || !start || !end){toast('Choose a staff member and date range.');return;}
   if(end < start){toast('End date cannot be before start date.');return;}
-  if(status==='available'){
-    const {error}=await sb.from('staff_availability').insert({staff_id:staffId,status:'available',start_date:start,end_date:end,reason:reason||'Available'});
-    if(error){toast(error.message);return;}
-  } else {
+  // Availability is a state, not another overlapping leave record. Remove records
+  // that overlap the selected range so a person can always be returned to Available.
+  const {error:clearError}=await sb.from('staff_availability').delete().eq('staff_id',staffId).lte('start_date',end).gte('end_date',start);
+  if(clearError){toast(clearError.message);return;}
+  if(status !== 'available'){
     const {error}=await sb.from('staff_availability').insert({staff_id:staffId,status,start_date:start,end_date:end,reason});
     if(error){toast(error.message);return;}
   }
@@ -345,15 +367,39 @@ async function saveStaffStatus(){
 function renderStaff(){
   const today = new Date().toISOString().slice(0,10);
   $('staffList').innerHTML = staff.length ? staff.map(s => {
-    const hours = staffHours(s.id,today);
-    const pct = Math.min(hours/40*100,100);
+    const metrics=staffMetrics(s,today);
+    const pct = Math.min(metrics.week.hours/40*100,100);
     const initials = s.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
-    const label = hours >= 40 ? 'At capacity' : hours >= 30 ? 'Busy' : hours >= 20 ? 'On target' : 'Available';
     const status = getStaffStatus(s.id,today);
     const meta = STAFF_STATUS[status] || STAFF_STATUS.available;
-    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${s.active ? 'Active professional' : 'Inactive'}</small></div></div><div class="staff-status-line"><span class="availability-dot availability-${status}"></span><strong>${esc(meta.label)}</strong><small>${esc(meta.detail)}</small></div><div class="capacity-label">${label} · ${hours.toFixed(1)}h / 40h</div><div class="mini-bar"><span style="width:${pct}%"></span></div><button class="btn btn-secondary staff-status-btn" type="button" data-staff-status="${esc(s.id)}">Change availability</button></article>`;
+    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${esc(s.job_title || 'Service professional')} · ${s.active ? 'Active' : 'Inactive'}</small></div></div><div class="staff-status-line"><span class="availability-dot availability-${status}"></span><strong>${esc(meta.label)}</strong><small>${esc(meta.detail)}</small></div><div class="staff-mini-metrics"><span><b>${metrics.week.hours.toFixed(1)}h</b><small>week</small></span><span><b>${metrics.month.hours.toFixed(1)}h</b><small>month</small></span><span><b>${money(metrics.month.revenue)}</b><small>job revenue</small></span></div><div class="mini-bar"><span style="width:${pct}%"></span></div><div class="staff-card-actions"><button class="btn btn-secondary staff-profile-btn" type="button" data-staff-profile="${esc(s.id)}">View profile</button><button class="btn btn-secondary staff-status-btn" type="button" data-staff-profile="${esc(s.id)}">Availability & profile</button></div></article>`;
   }).join('') : `<div class="empty-state"><strong>No staff members</strong><small>Add your first professional.</small></div>`;
   document.querySelectorAll('[data-staff-status]').forEach(btn => btn.addEventListener('click',() => openStaffStatus(btn.dataset.staffStatus)));
+  document.querySelectorAll('[data-staff-profile]').forEach(btn => btn.addEventListener('click',() => openStaffProfile(btn.dataset.staffProfile)));
+}
+
+function openStaffProfile(staffId){
+  const member=staff.find(s=>s.id===staffId); if(!member) return;
+  selectedStaffId=staffId;
+  const today=new Date().toISOString().slice(0,10), m=staffMetrics(member,today);
+  $('staffProfileId').value=staffId;
+  $('staffProfileTitle').textContent=member.name;
+  $('staffName').value=member.name||''; $('staffEmail').value=member.email||''; $('staffPhone').value=member.phone||'';
+  $('staffEmployeeId').value=member.employee_id||''; $('staffJobTitle').value=member.job_title||''; $('staffAddress').value=member.address||'';
+  $('staffHireDate').value=member.hire_date||''; $('staffPayType').value=member.pay_type||'hourly'; $('staffHourlyRate').value=member.hourly_rate??0;
+  $('staffBaseSalary').value=member.base_salary??0; $('staffTaxRate').value=member.tax_rate??0; $('staffDeductions').value=member.other_deductions??0;
+  $('staffEmergencyName').value=member.emergency_contact_name||''; $('staffEmergencyPhone').value=member.emergency_contact_phone||''; $('staffNotes').value=member.notes||'';
+  $('staffWeekHours').textContent=m.week.hours.toFixed(1)+'h'; $('staffWeekRevenue').textContent=money(m.week.revenue); $('staffMonthHours').textContent=m.month.hours.toFixed(1)+'h'; $('staffMonthRevenue').textContent=money(m.month.revenue);
+  $('staffGross').textContent=money(m.gross); $('staffTax').textContent=money(m.tax); $('staffNet').textContent=money(m.net);
+  $('staffProfileModal').classList.add('open'); $('staffProfileModal').setAttribute('aria-hidden','false');
+}
+function closeStaffProfile(){ $('staffProfileModal').classList.remove('open'); $('staffProfileModal').setAttribute('aria-hidden','true'); }
+async function saveStaffProfile(){
+  const id=$('staffProfileId').value; if(!id) return;
+  const patch={name:$('staffName').value.trim(),email:$('staffEmail').value.trim()||null,phone:$('staffPhone').value.trim()||null,employee_id:$('staffEmployeeId').value.trim()||null,job_title:$('staffJobTitle').value.trim()||null,address:$('staffAddress').value.trim()||null,hire_date:$('staffHireDate').value||null,pay_type:$('staffPayType').value,hourly_rate:Number($('staffHourlyRate').value)||0,base_salary:Number($('staffBaseSalary').value)||0,tax_rate:Number($('staffTaxRate').value)||0,other_deductions:Number($('staffDeductions').value)||0,emergency_contact_name:$('staffEmergencyName').value.trim()||null,emergency_contact_phone:$('staffEmergencyPhone').value.trim()||null,notes:$('staffNotes').value.trim()||null};
+  if(!patch.name){toast('Staff name is required.');return;}
+  const {error}=await sb.from('staff').update(patch).eq('id',id); if(error){toast(error.message);return;}
+  await writeAudit(`Staff profile updated for ${patch.name}.`); closeStaffProfile(); toast('Staff profile saved.'); await loadData();
 }
 
 function renderAudit(){
@@ -388,11 +434,34 @@ async function assignBooking(bookingId,staffId){
   await loadData();
 }
 
+async function deleteBooking(id){
+  const booking=bookings.find(b=>b.id===id); if(!booking) return;
+  if(!confirm(`Delete booking ${booking.booking_ref||id}? This cannot be undone.`)) return;
+  const {data,error}=await sb.rpc('delete_booking',{p_booking_id:id}); if(error){toast(error.message);return;}
+  if(!data){toast('Booking was not found.');return;}
+  await writeAudit(`Booking ${booking.booking_ref||id} deleted.`); toast('Booking deleted.'); await loadData();
+}
+
+async function clearAuditHistory(){
+  if(!confirm('Clear the entire Audit Tray history? This cannot be undone.')) return;
+  const {error}=await sb.rpc('clear_audit_history'); if(error){toast(error.message);return;}
+  logs=[]; renderAudit(); toast('Audit Tray cleared.');
+}
+
+async function freshStart(){
+  const phrase=prompt('This permanently deletes bookings, staff profiles, staff availability and audit history, then resets pricing. Type RESET TIDYLINE to continue.');
+  if(phrase!=='RESET TIDYLINE'){ if(phrase!==null) toast('Fresh start cancelled.'); return; }
+  const {data,error}=await sb.rpc('reset_tidyline_system',{p_confirmation:'RESET TIDYLINE'});
+  if(error){toast(error.message);return;}
+  toast('Tidyline has been reset for a fresh start.'); await loadSettings(); await loadData(); switchView('overview');
+}
+
 async function bookingAction(type,id){
   const booking = bookings.find(b => b.id === id);
   if(!booking) return;
   if(type === 'invoice') return openInvoicePreview(booking);
   if(type === 'print') return printInvoice(booking);
+  if(type === 'delete') return deleteBooking(id);
   if(type === 'complete' && !booking.staff_id){ toast('Assign a staff member before completing this booking.'); return; }
   const status = type === 'complete' ? 'completed' : 'cancelled';
   const {error} = await sb.from('bookings').update({status}).eq('id',id);
@@ -415,7 +484,7 @@ async function sendInvoice(booking){
 }
 
 function invoiceHtml(booking){
-  const c=currencyInfo();
+  const c=currencyInfo(booking.currency || settings.currency);
   const total=money(booking.price,booking.currency || settings.currency);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ${esc(booking.booking_ref||booking.id)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;padding:40px;max-width:760px;margin:auto;line-height:1.5}h1{margin:0;font-size:30px}.muted{color:#667085}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #e5e7eb;padding:12px 0}.total{font-size:24px;font-weight:800;border-bottom:0}.box{background:#f7fafc;padding:18px;border-radius:12px;margin-top:24px}@media(max-width:600px){body{padding:20px}.row{gap:12px;flex-wrap:wrap}}@media print{body{padding:15mm} .no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin-bottom:20px"><button onclick="window.print()">Print invoice</button></div><h1>Tidyline</h1><div class="muted">CLEAN SPACES · BETTER LIVES</div><h2>INVOICE</h2><div class="row"><span>Invoice</span><strong>INV-${esc(booking.booking_ref||booking.id)}</strong></div><div class="row"><span>Booking</span><strong>${esc(booking.booking_ref||booking.id)}</strong></div><div class="box"><strong>Bill to</strong><p>${esc(booking.name)}<br>${esc(booking.email||'')}<br>${esc(booking.phone||'')}<br>${esc(booking.address||'')}</p></div><div class="row"><span>Service</span><strong>${esc(booking.type||'')}</strong></div><div class="row"><span>Date</span><strong>${esc(fmtDate(booking.date))}</strong></div><div class="row"><span>Time</span><strong>${esc(fmtTime(booking.start_time))} – ${esc(fmtTime(booking.end_time))}</strong></div><div class="row"><span>Payment status</span><strong>${esc((booking.payment_status||'unpaid').toUpperCase())}</strong></div><div class="row total"><span>Total</span><strong>${esc(total)}</strong></div><p class="muted">Currency: ${esc(c.code)} · Thank you for choosing Tidyline.</p></body></html>`;
 }
@@ -583,6 +652,11 @@ function bindEvents(){
   $('addStaffForm').addEventListener('submit',addStaff);
   $('closeStaffStatus').addEventListener('click',closeStaffStatus);
   $('saveStaffStatus').addEventListener('click',saveStaffStatus);
+  $('closeStaffProfile').addEventListener('click',closeStaffProfile);
+  $('saveStaffProfile').addEventListener('click',saveStaffProfile);
+  $('profileAvailabilityBtn').addEventListener('click',()=>{ const id=$('staffProfileId').value; closeStaffProfile(); openStaffStatus(id); });
+  $('clearAuditBtn').addEventListener('click',clearAuditHistory);
+  $('freshStartBtn').addEventListener('click',freshStart);
   $('searchBookings').addEventListener('input',renderBookings);
   $('statusFilter').addEventListener('change',renderBookings);
   $('overviewBookingsBtn').addEventListener('click',() => switchView('bookings'));

@@ -87,7 +87,7 @@ BEGIN
       WHEN 'Office clean' THEN price_office
       ELSE NULL
     END,
-    CASE WHEN currency IN ('USD','GHS','EUR','GBP') THEN currency ELSE 'USD' END
+    CASE WHEN settings.currency IN ('USD','GHS','EUR','GBP') THEN settings.currency ELSE 'USD' END
   INTO v_rate, v_currency
   FROM settings
   WHERE id = 1;
