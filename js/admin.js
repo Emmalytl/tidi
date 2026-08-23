@@ -289,14 +289,14 @@ function renderBookingRow(b){
   const selectedOption = selected && !available.some(s=>s.id===selected.id) ? `<option value="${esc(selected.id)}" selected>${esc(selected.name)} (currently unavailable)</option>` : '';
   const options = `<option value="">Keep pending / unassigned</option>${selectedOption}` + available.filter(s=>s.id!==b.staff_id).map(s => `<option value="${esc(s.id)}" ${s.id === b.staff_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
   return `<tr>
-    <td><strong>${esc(b.booking_ref || b.id)}</strong><small>${esc((b.created_at || '').slice(0,10))}</small></td>
-    <td><strong>${esc(b.name)}</strong><small>${esc(b.email || '')}</small></td>
-    <td><strong>${fmtDate(b.date)}</strong><small>${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}</small></td>
-    <td>${esc(b.type || '')}</td>
-    <td><strong>${esc(selected?.name || 'Unassigned')}</strong><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
-    <td><span class="status status-${esc(b.status)}">${esc(b.status)}</span></td>
-    <td><strong>${money(b.price,b.currency || settings.currency)}</strong><small>${esc(b.currency || settings.currency || 'USD')}</small></td>
-    <td><div class="action-row">
+    <td data-label="Booking"><strong>${esc(b.booking_ref || b.id)}</strong><small>${esc((b.created_at || '').slice(0,10))}</small></td>
+    <td data-label="Customer"><strong>${esc(b.name)}</strong><small>${esc(b.email || '')}</small></td>
+    <td data-label="Schedule"><strong>${fmtDate(b.date)}</strong><small>${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}</small></td>
+    <td data-label="Service">${esc(b.type || '')}</td>
+    <td data-label="Staff"><strong>${esc(selected?.name || 'Unassigned')}</strong><select class="staff-select" data-id="${esc(b.id)}" aria-label="Assign staff to ${esc(b.booking_ref || b.id)}">${options}</select></td>
+    <td data-label="Status"><span class="status status-${esc(b.status)}">${esc(b.status)}</span></td>
+    <td data-label="Total"><strong>${money(b.price,b.currency || settings.currency)}</strong><small>${esc(b.currency || settings.currency || 'USD')}</small></td>
+    <td data-label="Actions"><div class="action-row"> 
       ${b.status !== 'completed' && b.status !== 'cancelled' ? `<button data-action="complete" data-id="${esc(b.id)}">Complete</button>` : ''}
       ${b.status !== 'cancelled' ? `<button data-action="cancel" data-id="${esc(b.id)}">Cancel</button>` : ''}
       <button data-action="invoice" data-id="${esc(b.id)}">Invoice</button><button data-action="print" data-id="${esc(b.id)}">Print</button><button data-action="delete" data-id="${esc(b.id)}">Delete</button>
@@ -452,18 +452,33 @@ async function deleteBooking(id){
 
 async function clearAuditHistory(){
   if(!confirm('Clear the entire Audit Tray history? This cannot be undone.')) return;
-  const {error}=await sb.rpc('clear_audit_history');
+  let {error}=await sb.rpc('clear_audit_history');
+  if(error && /does not exist|not found/i.test(error.message || '')) {
+    const fallback=await sb.from('activity_log').delete().not('id','is',null);
+    error=fallback.error;
+  }
   if(error){toast(`Audit history could not be cleared: ${error.message}`);return;}
   logs=[]; renderAudit(); toast('Audit Tray cleared.');
 }
 
+
 async function freshStart(){
-  const phrase=prompt('This permanently deletes bookings, staff profiles, staff availability and audit history, then resets pricing. Type RESET TIDYLINE to continue.');
+  const phrase=prompt('This permanently deletes operational Tidyline data and cannot be undone. Type RESET TIDYLINE to continue.');
   if(phrase!=='RESET TIDYLINE'){ if(phrase!==null) toast('Fresh start cancelled.'); return; }
-  const {data,error}=await sb.rpc('reset_tidyline_system',{p_confirmation:'RESET TIDYLINE'});
-  if(error){toast(error.message);return;}
+  let {error}=await sb.rpc('reset_tidyline_system',{p_confirmation:'RESET TIDYLINE'});
+  if(error && /does not exist|not found/i.test(error.message || '')) {
+    const tables=['activity_log','staff_availability','invoices','bookings','customers','staff'];
+    for(const table of tables){
+      const exists = await sb.from(table).select('*',{head:true,count:'exact'});
+      if(exists.error && /relation|does not exist|schema cache/i.test(exists.error.message || '')) continue;
+      const result=await sb.from(table).delete().not('id','is',null);
+      if(result.error){ error=result.error; break; }
+    }
+  }
+  if(error){toast(`Fresh start failed: ${error.message}`);return;}
   toast('Tidyline has been reset for a fresh start.'); await loadSettings(); await loadData(); switchView('overview');
 }
+
 
 async function bookingAction(type,id){
   const booking = bookings.find(b => b.id === id);

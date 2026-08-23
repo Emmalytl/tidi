@@ -51,3 +51,21 @@
 @media(max-width:900px){.admin-content{padding-bottom:80px}.admin-topbar{padding:0 18px}.admin-content{padding-left:18px;padding-right:18px}.stats-grid{grid-template-columns:repeat(2,1fr)}.payroll-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){.admin-topbar{height:70px}.topbar-left h1{font-size:19px}.topbar-right .session-pill{display:none}.admin-content{padding:18px 12px 70px}.page-heading h2,.welcome-row h2{font-size:28px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card strong{font-size:22px}.payroll-summary{grid-template-columns:1fr 1fr}.payroll-card{overflow:hidden}.payrollMonth{max-width:100%}.customers-card .toolbar{gap:10px}.customer-table{min-width:620px}.audit-head{align-items:flex-start}.audit-head-actions{flex-direction:row;align-items:center}.audit-tray{width:min(100%,460px);padding:18px}.admin-login-card{padding:26px 20px}.sidebar-brand-link{padding-left:5px}}
 @media(max-width:420px){.stats-grid{grid-template-columns:1fr}.payroll-summary{grid-template-columns:1fr}.welcome-row .btn,.page-heading .btn{width:100%}.topbar-right{display:none}}
+
+
+/* TIDYLINE ADMIN V3 — responsive operations shell */
+.admin-sidebar{height:100dvh;max-height:100dvh;overflow:hidden;overscroll-behavior:contain}
+.sidebar-nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 2px 10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.sidebar-nav::-webkit-scrollbar{width:5px}.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:99px}
+.sidebar-bottom{flex:none}.admin-main{min-width:0}.admin-content{width:100%;overflow-x:clip}
+.admin-card,.stat-card,.staff-card,.customer-card,.payroll-summary-card{position:relative;overflow:hidden}
+.admin-card::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--admin-primary),transparent);opacity:.16}
+.nav-item{position:relative}.nav-item.active::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:99px;background:#bdeee2}
+.admin-view{animation:adminViewIn .28s ease both}@keyframes adminViewIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.table-wrap{overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}.admin-table thead th{position:sticky;top:0;z-index:2;background:#f9fcfb}.admin-table tbody tr{transition:background .18s ease,transform .18s ease}.admin-table tbody tr:hover{background:#f5faf8}
+.action-row{flex-wrap:wrap}.action-row button{transition:.18s ease}.action-row button:hover{transform:translateY(-1px)}
+.status{white-space:nowrap}
+@media(max-width:900px){.admin-sidebar{width:min(300px,88vw)}.admin-content{padding-left:18px;padding-right:18px}.admin-topbar{padding-left:18px;padding-right:18px}.admin-card{padding:20px}}
+@media(max-width:640px){.admin-sidebar{width:min(320px,90vw)}.admin-content{padding:16px 12px 88px}.admin-topbar{height:66px}.topbar-left{min-width:0}.topbar-left>div{min-width:0}.topbar-left h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-right{display:none}.welcome-row,.page-heading{gap:14px;margin-bottom:18px}.welcome-row h2,.page-heading h2{font-size:27px}.admin-card{padding:15px;border-radius:17px}.card-heading{gap:10px}.card-heading h3{font-size:17px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card{padding:13px}.stat-card strong{font-size:21px}.table-wrap{margin:0 -3px;padding-bottom:5px}.admin-table{min-width:720px}.customer-table{min-width:620px}.payroll-table{min-width:980px}.toolbar{gap:9px}.search-wrap input{min-height:46px}.toolbar select{min-height:46px}.btn{min-height:44px}.staff-card-actions .btn{min-height:44px}
+}
+@media(max-width:390px){.stats-grid{grid-template-columns:1fr}.admin-content{padding-left:10px;padding-right:10px}.admin-topbar{padding:0 12px}.topbar-left h1{font-size:18px}.mobile-menu-btn{width:42px;height:42px}.admin-card{padding:13px}.page-heading .btn,.welcome-row .btn{width:100%}}

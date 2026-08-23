@@ -114,3 +114,7 @@ Run `supabase/migrations/004_staff_availability.sql` after the other migrations 
    - `Print / Save PDF` opens the browser print dialog.
    - `Download invoice` saves an HTML invoice that can be printed to PDF.
    - `Send invoice by email` uses the Supabase `send-email` Edge Function.
+
+
+## Admin v3 reliability migration
+Run `supabase/migrations/008_admin_reliability.sql` in Supabase SQL Editor after opening and copying the SQL contents. Do not paste the filename itself. This creates the clear-audit, delete-audit, delete-booking and fresh-start RPCs.
