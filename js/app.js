@@ -4,7 +4,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Admin sessions are intentionally scoped to admin.html. If an authenticated admin lands on the public site, sign out immediately.
 (async()=>{try{const {data}=await sb.auth.getSession();if(data.session && sessionStorage.getItem('tidyline_admin_active')==='1'){sessionStorage.removeItem('tidyline_admin_active');await sb.auth.signOut();}}catch(e){console.warn('Admin session guard:',e)}})();
-let settingsState={company_name:'Tidyline',logo_url:null,price_standard:45,price_deep:65,price_moveinout:55,price_office:50,currency:'USD'};
+let settingsState={company_name:'Tidyline',logo_url:null,price_standard:45,price_deep:65,price_moveinout:55,price_office:50,currency:'USD',whatsapp_number:''};
 const CURRENCIES={USD:{symbol:'$',name:'US Dollar'},GHS:{symbol:'GH₵',name:'Ghana Cedi'},EUR:{symbol:'€',name:'Euro'},GBP:{symbol:'£',name:'British Pound'}};
 function money(v){const c=CURRENCIES[settingsState.currency]||CURRENCIES.USD;return `${c.symbol}${Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;}
 const $=id=>document.getElementById(id);
@@ -43,6 +43,80 @@ async function sendAdminBookingEmail(booking){
   }catch(e){ console.warn('Admin notification email failed:',e); }
 }
 
+
+function statusMeta(status){
+  const s=String(status||'pending').toLowerCase().replace(/\s+/g,'_');
+  const map={pending:['Pending','status-pending'],assigned:['Assigned','status-assigned'],in_progress:['In progress','status-in-progress'],completed:['Completed','status-completed'],cancelled:['Cancelled','status-cancelled'],canceled:['Cancelled','status-cancelled']};
+  return map[s]||[String(status||'Pending').replace(/_/g,' '),'status-pending'];
+}
+function statusRank(status){return {pending:0,assigned:1,in_progress:2,completed:3,cancelled:4,canceled:4}[String(status||'pending').toLowerCase()]??0}
+function formatCurrencyValue(value,currency){const c=CURRENCIES[currency]||CURRENCIES.USD;return `${c.symbol}${Number(value||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+function escapeHtml(v){return esc(v)}
+function bookingTimeline(status){
+  const current=statusRank(status), steps=[['pending','Pending'],['assigned','Assigned'],['in_progress','In progress'],['completed','Completed']];
+  return `<div class="status-timeline">${steps.map((x,i)=>`<div class="timeline-step ${current>=i?'done':''}">${x[1]}</div>`).join('')}</div>`;
+}
+function invoiceHtml(b){
+  const currency=b.currency||settingsState.currency||'USD';
+  const total=formatCurrencyValue(b.price,currency);
+  return `<div class="invoice-print-shell"><div class="invoice-top"><div><h1>Tidyline</h1><p>Professional cleaning, simply booked.</p></div><div><strong>Invoice ${escapeHtml('INV-'+b.booking_ref)}</strong><p>${escapeHtml(fmtDate(b.service_date||b.date))}</p></div></div><table><tr><td>Customer</td><td>${escapeHtml(b.customer_name||b.name||'')}</td></tr><tr><td>Service</td><td>${escapeHtml(b.service_type||b.type||'')}</td></tr><tr><td>Service date</td><td>${escapeHtml(fmtDate(b.service_date||b.date))}</td></tr><tr><td>Time</td><td>${escapeHtml(fmtTime(b.start_time||b.start))} – ${escapeHtml(fmtTime(b.end_time||b.end))}</td></tr><tr><td>Booking code</td><td>${escapeHtml(b.booking_ref||'')}</td></tr><tr><td>Payment status</td><td>${escapeHtml(String(b.payment_status||'unpaid').replace(/_/g,' '))}</td></tr></table><div class="invoice-total"><span>Total</span><span>${total}</span></div></div>`;
+}
+function openInvoice(b){
+  let root=document.getElementById('invoicePrintRoot');
+  if(!root){root=document.createElement('div');root.id='invoicePrintRoot';root.className='modal';document.body.appendChild(root);}
+  root.innerHTML=`<div class="modal-card" style="width:min(780px,100%);max-height:90vh;overflow:auto"><button class="modal-close" type="button" aria-label="Close invoice">×</button><div id="invoiceContent">${invoiceHtml(b)}</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:15px"><button class="btn btn-secondary" id="invoicePrintBtn">Print invoice</button><button class="btn btn-primary" id="invoiceDownloadBtn">Download invoice</button></div></div>`;
+  root.classList.add('open');
+  root.querySelector('.modal-close').onclick=()=>root.classList.remove('open');
+  root.onclick=e=>{if(e.target===root)root.classList.remove('open')};
+  root.querySelector('#invoicePrintBtn').onclick=()=>{window.print()};
+  root.querySelector('#invoiceDownloadBtn').onclick=()=>downloadInvoice(b);
+}
+function downloadInvoice(b){
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Invoice INV-${escapeHtml(b.booking_ref||'')}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#10201b}.invoice-print-shell{max-width:720px;margin:auto;border:1px solid #dce8e3;border-radius:20px;padding:32px}.invoice-top{display:flex;justify-content:space-between;border-bottom:1px solid #dce8e3;padding-bottom:20px;margin-bottom:20px}h1{font-size:28px}p{color:#64746e;font-size:12px}table{width:100%;border-collapse:collapse}td{padding:10px 0;border-bottom:1px solid #edf1ef}td:last-child{text-align:right;font-weight:700}.invoice-total{display:flex;justify-content:space-between;border-top:1px solid #dce8e3;padding-top:18px;margin-top:18px;font-weight:800}</style></head><body>${invoiceHtml(b)}</body></html>`;
+  const blob=new Blob([html],{type:'text/html'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`Tidyline-Invoice-${b.booking_ref||'booking'}.html`;a.click();URL.revokeObjectURL(url);
+  toast('Invoice downloaded. Open the HTML file to print or save as PDF.');
+}
+function copyBookingCode(ref){
+  if(!ref)return;
+  const done=()=>toast('Booking code copied.');
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(ref).then(done).catch(()=>fallbackCopy(ref,done)); else fallbackCopy(ref,done);
+}
+function fallbackCopy(text,done){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();done()}
+function renderConfirmationActions(booking){
+  const ref=booking.booking_ref||booking.ref||'';
+  const inv=document.getElementById('confirmInvoice'); if(inv)inv.textContent='INV-'+ref;
+  const st=document.getElementById('confirmStatus'); if(st){const [label,cls]=statusMeta(booking.status);st.textContent=label;st.className=`status-pill ${cls}`}
+  const cp=document.getElementById('copyBookingBtn'); if(cp)cp.onclick=()=>copyBookingCode(ref);
+  const vi=document.getElementById('viewInvoiceBtn'); if(vi)vi.onclick=()=>openInvoice(booking);
+  const di=document.getElementById('downloadInvoiceBtn'); if(di)di.onclick=()=>downloadInvoice(booking);
+}
+async function lookupBooking(ref,email){
+  const {data,error}=await sb.rpc('lookup_public_booking',{p_booking_ref:ref,p_email:email});
+  if(error)throw error;
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row)throw new Error('We could not find a booking with that code and email. Check both and try again.');
+  return row;
+}
+function renderLookup(row){
+  const box=document.getElementById('lookupResult'); if(!box)return;
+  const [label,cls]=statusMeta(row.status);
+  box.innerHTML=`<div class="lookup-result-head"><div><small>Booking code</small><strong>${escapeHtml(row.booking_ref)}</strong></div><span class="status-pill ${cls}">${label}</span></div><div class="lookup-grid"><div class="lookup-item"><small>Service</small><strong>${escapeHtml(row.service_type||'—')}</strong></div><div class="lookup-item"><small>Date & time</small><strong>${escapeHtml(fmtDate(row.service_date))} · ${escapeHtml(fmtTime(row.start_time))}–${escapeHtml(fmtTime(row.end_time))}</strong></div><div class="lookup-item"><small>Professional</small><strong>${escapeHtml(row.staff_name||'Pending assignment')}</strong></div><div class="lookup-item"><small>Total</small><strong>${formatCurrencyValue(row.price,row.currency)}</strong></div></div>${bookingTimeline(row.status)}<div class="confirm-actions" style="margin-bottom:0"><button class="btn btn-secondary" id="lookupCopyBtn">Copy booking code</button><button class="btn btn-secondary" id="lookupInvoiceBtn">View invoice</button><button class="btn btn-secondary" id="lookupDownloadBtn">Download invoice</button></div>`;
+  box.hidden=false;
+  document.getElementById('lookupCopyBtn').onclick=()=>copyBookingCode(row.booking_ref);
+  document.getElementById('lookupInvoiceBtn').onclick=()=>openInvoice(row);
+  document.getElementById('lookupDownloadBtn').onclick=()=>downloadInvoice(row);
+}
+function initBookingLookup(){
+  const form=document.getElementById('bookingLookupForm');if(!form)return;
+  form.addEventListener('submit',async e=>{e.preventDefault();const ref=document.getElementById('lookupRef').value.trim(),email=document.getElementById('lookupEmail').value.trim();const err=document.getElementById('lookupError'),btn=document.getElementById('lookupBtn');err.textContent='';document.getElementById('lookupResult').hidden=true;if(!ref||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='Enter a valid booking code and the email used for the booking.';return}btn.disabled=true;btn.textContent='Checking…';try{renderLookup(await lookupBooking(ref,email))}catch(ex){console.error(ex);err.textContent=ex.message||'We could not find that booking.'}finally{btn.disabled=false;btn.innerHTML='Check booking <span>→</span>'}})
+}
+function initWhatsApp(){
+  const fab=document.getElementById('whatsappFab');if(!fab)return;
+  const raw=String(settingsState.whatsapp_number||'').replace(/\D/g,'');
+  if(raw){fab.href=`https://wa.me/${raw}?text=${encodeURIComponent('Hello Tidyline, I need help with a booking.')}`;}
+  else {fab.href='#';fab.addEventListener('click',e=>{e.preventDefault();toast('WhatsApp support will be available once the Tidyline WhatsApp number is configured.')})}
+}
+
 function initBookingForm(){
   const form=$('bookingForm');
   if(!form) return;
@@ -77,7 +151,8 @@ function initBookingForm(){
       if($('confirmInvoice')) $('confirmInvoice').textContent=`INV-${bookingRef}`;
       if($('confirmStaff')) $('confirmStaff').textContent='Pending admin assignment';
       if($('confirmPrice')) $('confirmPrice').textContent=money(r.price);
-      const bookingPayload={...draft, start_time:start,end_time:end,price:r.price,booking_ref:bookingRef,status:'pending',currency:r.currency||settingsState.currency||'USD'};
+      const bookingPayload={...draft, start_time:start,end_time:end,price:r.price,booking_ref:bookingRef,status:'pending',currency:r.currency||settingsState.currency||'USD',payment_status:'unpaid'};
+      renderConfirmationActions(bookingPayload);
       const sent=await sendBookingEmail(bookingPayload);
       void sendAdminBookingEmail(bookingPayload);
       if($('confirmEmailStatus')){
@@ -111,6 +186,7 @@ function bootPublicSite(){
   if($('year')) $('year').textContent=new Date().getFullYear();
   if($('f_date')) $('f_date').min=new Date().toISOString().slice(0,10);
   initBookingForm();
-  loadSettings().then(()=>updateEstimate());
+  initBookingLookup();
+  loadSettings().then(()=>{updateEstimate();initWhatsApp()});
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bootPublicSite); else bootPublicSite;
