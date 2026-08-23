@@ -408,8 +408,12 @@ function renderAudit(){
 async function deleteAuditItem(id){
   if(!id) return;
   if(!confirm('Delete this audit history item?')) return;
-  const {data,error}=await sb.rpc('delete_audit_log',{p_log_id:id});
-  if(error){toast(error.message);return;}
+  let {data,error}=await sb.rpc('delete_audit_log',{p_log_id:id});
+  if(error){
+    const fallback=await sb.from('activity_log').delete().eq('id',id).select('id');
+    error=fallback.error; data=!!(fallback.data && fallback.data.length);
+  }
+  if(error){toast(`History item could not be deleted: ${error.message}`);return;}
   if(data===false){toast('History item was not found.');return;}
   logs=logs.filter(x=>String(x.id)!==String(id)); renderAudit(); toast('History item deleted.');
 }
@@ -453,8 +457,8 @@ async function deleteBooking(id){
 async function clearAuditHistory(){
   if(!confirm('Clear the entire Audit Tray history? This cannot be undone.')) return;
   let {error}=await sb.rpc('clear_audit_history');
-  if(error && /does not exist|not found/i.test(error.message || '')) {
-    const fallback=await sb.from('activity_log').delete().not('id','is',null);
+  if(error){
+    const fallback=await sb.from('activity_log').delete().not('created_at','is',null);
     error=fallback.error;
   }
   if(error){toast(`Audit history could not be cleared: ${error.message}`);return;}
@@ -466,12 +470,17 @@ async function freshStart(){
   const phrase=prompt('This permanently deletes operational Tidyline data and cannot be undone. Type RESET TIDYLINE to continue.');
   if(phrase!=='RESET TIDYLINE'){ if(phrase!==null) toast('Fresh start cancelled.'); return; }
   let {error}=await sb.rpc('reset_tidyline_system',{p_confirmation:'RESET TIDYLINE'});
-  if(error && /does not exist|not found/i.test(error.message || '')) {
+  if(error){
     const tables=['activity_log','staff_availability','invoices','bookings','customers','staff'];
+    error=null;
     for(const table of tables){
-      const exists = await sb.from(table).select('*',{head:true,count:'exact'});
-      if(exists.error && /relation|does not exist|schema cache/i.test(exists.error.message || '')) continue;
-      const result=await sb.from(table).delete().not('id','is',null);
+      const probe=await sb.from(table).select('*',{head:true,count:'exact'});
+      if(probe.error){
+        if(/relation|does not exist|schema cache/i.test(probe.error.message || '')) continue;
+        error=probe.error; break;
+      }
+      const column = table==='activity_log' ? 'created_at' : 'id';
+      const result=await sb.from(table).delete().not(column,'is',null);
       if(result.error){ error=result.error; break; }
     }
   }
@@ -710,6 +719,34 @@ async function showDashboard(){
   await loadData();
 }
 
+function installUiGuards(){
+  document.querySelectorAll('.modal').forEach(modal=>{
+    const observer=new MutationObserver(()=>{
+      const anyOpen=[...document.querySelectorAll('.modal.open')].length>0;
+      document.body.classList.toggle('modal-open',anyOpen);
+    });
+    observer.observe(modal,{attributes:true,attributeFilter:['class']});
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape') return;
+    const openModal=document.querySelector('.modal.open');
+    if(openModal){
+      const close=openModal.querySelector('.modal-close');
+      close?.click();
+      return;
+    }
+    if($('auditTray')?.classList.contains('open')) closeAudit();
+    else if($('adminSidebar')?.classList.contains('open')) closeSidebarMobile();
+  });
+  document.querySelectorAll('.modal').forEach(modal=>{
+    modal.addEventListener('click',e=>{
+      if(e.target===modal){
+        modal.querySelector('.modal-close')?.click();
+      }
+    });
+  });
+}
+
 function bindEvents(){
   $('loginForm').addEventListener('submit',login);
   $('logoutBtn').addEventListener('click',logoutAdmin);
@@ -751,6 +788,7 @@ sb.auth.onAuthStateChange((event,session) => {
 });
 
 bindEvents();
+installUiGuards();
 
 sb.auth.getSession().then(async ({data}) => {
   if(data.session) await showDashboard();

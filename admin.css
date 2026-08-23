@@ -69,3 +69,90 @@
 @media(max-width:640px){.admin-sidebar{width:min(320px,90vw)}.admin-content{padding:16px 12px 88px}.admin-topbar{height:66px}.topbar-left{min-width:0}.topbar-left>div{min-width:0}.topbar-left h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-right{display:none}.welcome-row,.page-heading{gap:14px;margin-bottom:18px}.welcome-row h2,.page-heading h2{font-size:27px}.admin-card{padding:15px;border-radius:17px}.card-heading{gap:10px}.card-heading h3{font-size:17px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card{padding:13px}.stat-card strong{font-size:21px}.table-wrap{margin:0 -3px;padding-bottom:5px}.admin-table{min-width:720px}.customer-table{min-width:620px}.payroll-table{min-width:980px}.toolbar{gap:9px}.search-wrap input{min-height:46px}.toolbar select{min-height:46px}.btn{min-height:44px}.staff-card-actions .btn{min-height:44px}
 }
 @media(max-width:390px){.stats-grid{grid-template-columns:1fr}.admin-content{padding-left:10px;padding-right:10px}.admin-topbar{padding:0 12px}.topbar-left h1{font-size:18px}.mobile-menu-btn{width:42px;height:42px}.admin-card{padding:13px}.page-heading .btn,.welcome-row .btn{width:100%}}
+
+/* TIDYLINE ADMIN V4 — mobile-first shell, modal safety and touch UX */
+html{background:var(--admin-bg);-webkit-text-size-adjust:100%}
+body.admin-body{overflow-x:hidden}
+body.admin-body.modal-open{overflow:hidden;touch-action:none}
+.admin-sidebar{overscroll-behavior-y:contain;scrollbar-gutter:stable;}
+.sidebar-nav{overscroll-behavior:contain;touch-action:pan-y;}
+.admin-main{min-width:0;overflow-x:hidden}
+.admin-content{min-width:0;overflow-x:hidden}
+.admin-topbar{min-width:0}
+.topbar-left{min-width:0}
+.topbar-left>div{min-width:0}
+.btn,.icon-btn,.modal-close,.audit-delete,.nav-item,.action-row button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.modal{z-index:120;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;overflow-x:hidden;padding:clamp(10px,3vw,28px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal.open{display:flex}
+.modal-card{margin:auto;width:min(680px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:clamp(20px,4vw,30px);border-radius:22px}
+.modal-close{z-index:3;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(16,49,41,.06)}
+.staff-profile-modal{width:min(820px,100%);max-height:calc(100dvh - 40px)}
+.staff-status-modal{width:min(640px,100%);max-height:calc(100dvh - 40px)}
+.invoice-preview-card{max-height:calc(100dvh - 40px);width:min(850px,100%)}
+.invoice-preview-card #invoicePreviewContent{max-width:100%;overflow:hidden}
+.invoice-actions{position:sticky;bottom:0;background:#fff;z-index:2}
+.audit-tray{height:100dvh;max-height:100dvh;overscroll-behavior:contain}
+.audit-list{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.audit-item{padding-right:44px}
+.audit-delete{z-index:2;display:grid;place-items:center;cursor:pointer;min-width:32px;min-height:32px}
+@media (max-width:900px){
+  .admin-sidebar{width:min(320px,88vw);padding:16px 12px}
+  .sidebar-profile{margin:20px 4px 14px}
+  .admin-main{margin-left:0}
+  .admin-content{padding:20px 16px 80px}
+  .admin-topbar{height:68px;padding:0 16px}
+  .mobile-menu-btn{display:grid!important;place-items:center;width:42px;height:42px;border:1px solid var(--admin-line);border-radius:12px;background:#fff;color:var(--admin-primary)}
+  .toolbar{flex-wrap:wrap}
+  .toolbar>*{min-width:0}
+  .table-wrap{max-width:100%;overflow-x:auto}
+}
+@media (max-width:640px){
+  .admin-sidebar{width:min(340px,92vw);padding:14px 10px}
+  .sidebar-nav{padding-bottom:18px}
+  .sidebar-bottom{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .admin-topbar{height:64px;padding:0 12px}
+  .admin-content{padding:14px 10px calc(76px + env(safe-area-inset-bottom))}
+  .welcome-row,.page-heading{width:100%;}
+  .welcome-row h2,.page-heading h2{font-size:25px;line-height:1.15}
+  .stats-grid{gap:8px}
+  .stat-card{min-width:0;padding:12px;border-radius:15px}
+  .stat-card strong{font-size:20px;overflow:hidden;text-overflow:ellipsis}
+  .admin-card{padding:14px;border-radius:16px}
+  .card-heading{flex-wrap:wrap}
+  .toolbar{width:100%;align-items:stretch;flex-direction:column}
+  .search-wrap,.toolbar select,.toolbar .btn{width:100%;max-width:none}
+  .action-row{gap:6px}
+  .action-row button{min-height:42px;padding:9px 10px}
+  .modal{padding:8px;align-items:flex-start}
+  .modal-card,.staff-profile-modal,.staff-status-modal,.invoice-preview-card{width:100%;max-width:none;max-height:calc(100dvh - 16px);margin:8px 0;padding:18px 14px;border-radius:18px}
+  .modal-card h2{font-size:22px;padding-right:42px}
+  .modal-intro{font-size:11px;padding-right:8px}
+  .modal-close{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:12px;font-size:22px}
+  .pricing-grid{grid-template-columns:1fr;gap:10px}
+  .profile-metrics,.salary-summary{grid-template-columns:1fr 1fr}
+  .profile-action-row,.settings-actions,.invoice-actions{flex-direction:column;align-items:stretch}
+  .profile-action-row .btn,.settings-actions .btn,.invoice-actions .btn{width:100%;min-height:46px}
+  .audit-tray{width:100%;padding:14px 12px}
+  .audit-head{gap:10px;align-items:flex-start}
+  .audit-head h2{font-size:23px}
+  .audit-head-actions{flex-shrink:0}
+  .audit-head-actions .btn{min-height:42px}
+  .audit-delete{width:38px;height:38px;right:0;top:10px}
+  .audit-item{padding:12px 48px 12px 18px}
+  .audit-item strong{font-size:11px;overflow-wrap:anywhere}
+  .audit-item small{font-size:9px}
+  .logout-warning{inset:auto 8px calc(8px + env(safe-area-inset-bottom))}
+  .logout-warning-card{padding:12px;flex-wrap:wrap}
+  .logout-warning-card .btn{width:100%;margin-left:0;min-height:44px}
+  .toast{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center}
+  .customer-table{min-width:560px}
+  .admin-table{min-width:700px}
+  .payroll-table{min-width:900px}
+}
+@media (max-width:390px){
+  .stats-grid{grid-template-columns:1fr}
+  .admin-content{padding-left:8px;padding-right:8px}
+  .modal-card,.staff-profile-modal,.staff-status-modal,.invoice-preview-card{padding:16px 12px}
+  .profile-metrics,.salary-summary{grid-template-columns:1fr}
+  .topbar-left h1{font-size:17px}
+}
