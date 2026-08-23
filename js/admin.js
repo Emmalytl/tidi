@@ -66,7 +66,7 @@ function weekEnd(date){
 }
 
 function periodHoursAndRevenue(staffId,start,end){
-  return bookings.filter(b => b.staff_id === staffId && b.status !== 'cancelled' && b.date >= start && b.date < end)
+  return bookings.filter(b => b.staff_id === staffId && b.status === 'completed' && b.date >= start && b.date < end)
     .reduce((acc,b) => { acc.hours += durationHours(b.start_time,b.end_time); acc.revenue += Number(b.price||0); return acc; },{hours:0,revenue:0});
 }
 function staffHours(staffId,date){ return periodHoursAndRevenue(staffId,weekStart(date),weekEnd(date)).hours; }
@@ -223,7 +223,7 @@ async function loadData(){
   renderAll();
 }
 
-function renderAll(){ renderStats(); renderBookings(); renderStaff(); renderOverview(); renderAudit(); updatePendingBadge(); renderCustomers(); renderInvoices(); renderReports(); }
+function renderAll(){ renderStats(); renderBookings(); renderStaff(); renderOverview(); renderAudit(); updatePendingBadge(); renderCustomers(); renderInvoices(); renderPayroll(); renderReports(); }
 
 function renderStats(){
   const today = new Date().toISOString().slice(0,10);
@@ -351,7 +351,7 @@ async function saveStaffStatus(){
   if(end < start){toast('End date cannot be before start date.');return;}
   // Availability is a state, not another overlapping leave record. Remove records
   // that overlap the selected range so a person can always be returned to Available.
-  const {error:clearError}=await sb.from('staff_availability').delete().eq('staff_id',staffId).lte('start_date',end).gte('end_date',start);
+  const {error:clearError}=await sb.from('staff_availability').delete().eq('staff_id',staffId).lte('start_date',end).or(`end_date.is.null,end_date.gte.${start}`);
   if(clearError){toast(clearError.message);return;}
   if(status !== 'available'){
     const {error}=await sb.from('staff_availability').insert({staff_id:staffId,status,start_date:start,end_date:end,reason});
@@ -370,7 +370,7 @@ function renderStaff(){
     const initials = s.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
     const status = getStaffStatus(s.id,today);
     const meta = STAFF_STATUS[status] || STAFF_STATUS.available;
-    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${esc(s.job_title || 'Service professional')} · ${s.active ? 'Active' : 'Inactive'}</small></div></div><div class="staff-status-line"><span class="availability-dot availability-${status}"></span><strong>${esc(meta.label)}</strong><small>${esc(meta.detail)}</small></div><div class="staff-mini-metrics"><span><b>${metrics.week.hours.toFixed(1)}h</b><small>week</small></span><span><b>${metrics.month.hours.toFixed(1)}h</b><small>month</small></span><span><b>${money(metrics.month.revenue)}</b><small>job revenue</small></span></div><div class="mini-bar"><span style="width:${pct}%"></span></div><div class="staff-card-actions"><button class="btn btn-secondary staff-profile-btn" type="button" data-staff-profile="${esc(s.id)}">View profile</button><button class="btn btn-secondary staff-status-btn" type="button" data-staff-profile="${esc(s.id)}">Availability & profile</button></div></article>`;
+    return `<article class="staff-card"><div class="staff-card-top"><div class="mini-avatar">${esc(initials)}</div><div><strong>${esc(s.name)}</strong><small>${esc(s.job_title || 'Service professional')} · ${s.active ? 'Active' : 'Inactive'}</small></div></div><div class="staff-status-line"><span class="availability-dot availability-${status}"></span><strong>${esc(meta.label)}</strong><small>${esc(meta.detail)}</small></div><div class="staff-mini-metrics"><span><b>${metrics.week.hours.toFixed(1)}h</b><small>week</small></span><span><b>${metrics.month.hours.toFixed(1)}h</b><small>month</small></span><span><b>${money(metrics.month.revenue)}</b><small>job revenue</small></span></div><div class="mini-bar"><span style="width:${pct}%"></span></div><div class="staff-card-actions"><button class="btn btn-secondary staff-status-btn" type="button" data-staff-profile="${esc(s.id)}">Availability & profile</button></div></article>`;
   }).join('') : `<div class="empty-state"><strong>No staff members</strong><small>Add your first professional.</small></div>`;
   document.querySelectorAll('[data-staff-status]').forEach(btn => btn.addEventListener('click',() => openStaffStatus(btn.dataset.staffStatus)));
   document.querySelectorAll('[data-staff-profile]').forEach(btn => btn.addEventListener('click',() => openStaffProfile(btn.dataset.staffProfile)));
@@ -401,7 +401,17 @@ async function saveStaffProfile(){
 }
 
 function renderAudit(){
-  $('activityList').innerHTML = logs.length ? logs.map(log => `<article class="audit-item"><strong>${esc(log.message || 'System activity')}</strong><small>${new Date(log.created_at).toLocaleString()}</small></article>`).join('') : `<div class="empty-state"><strong>No audit activity</strong><small>Administrative events will appear here.</small></div>`;
+  $('activityList').innerHTML = logs.length ? logs.map(log => `<article class="audit-item"><button class="audit-delete" type="button" data-audit-delete="${esc(log.id)}" aria-label="Delete this history item" title="Delete history item">×</button><strong>${esc(log.message || 'System activity')}</strong><small>${new Date(log.created_at).toLocaleString()}</small></article>`).join('') : `<div class="empty-state"><strong>No audit activity</strong><small>Administrative events will appear here.</small></div>`;
+  $('activityList').querySelectorAll('[data-audit-delete]').forEach(btn => btn.addEventListener('click',()=>deleteAuditItem(btn.dataset.auditDelete)));
+}
+
+async function deleteAuditItem(id){
+  if(!id) return;
+  if(!confirm('Delete this audit history item?')) return;
+  const {data,error}=await sb.rpc('delete_audit_log',{p_log_id:id});
+  if(error){toast(error.message);return;}
+  if(data===false){toast('History item was not found.');return;}
+  logs=logs.filter(x=>String(x.id)!==String(id)); renderAudit(); toast('History item deleted.');
 }
 
 async function writeAudit(message){
@@ -442,7 +452,8 @@ async function deleteBooking(id){
 
 async function clearAuditHistory(){
   if(!confirm('Clear the entire Audit Tray history? This cannot be undone.')) return;
-  const {error}=await sb.rpc('clear_audit_history'); if(error){toast(error.message);return;}
+  const {error}=await sb.rpc('clear_audit_history');
+  if(error){toast(`Audit history could not be cleared: ${error.message}`);return;}
   logs=[]; renderAudit(); toast('Audit Tray cleared.');
 }
 
@@ -529,8 +540,56 @@ function openInvoicePreview(booking){
   modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
 }
 
-function renderCustomers(){const q=(($('searchCustomers')?.value)||'').trim().toLowerCase();const map=new Map();bookings.forEach(b=>{const key=(b.email||b.phone||b.name||'').toLowerCase();if(!key)return;const x=map.get(key)||{name:b.name||'Customer',email:b.email||'',phone:b.phone||'',address:b.address||'',bookings:0,completed:0,spent:0};x.bookings++;if(b.status==='completed')x.completed++;if(b.status!=='cancelled')x.spent+=Number(b.price||0);map.set(key,x)});const rows=[...map.values()].filter(x=>`${x.name} ${x.email} ${x.phone}`.toLowerCase().includes(q));const el=$('customerGrid');if(!el)return;el.innerHTML=rows.length?rows.map(c=>`<article class="customer-card"><div class="customer-avatar">${esc((c.name||'?')[0].toUpperCase())}</div><div class="customer-main"><h3>${esc(c.name)}</h3><p>${esc(c.email||'No email')} · ${esc(c.phone||'No phone')}</p><small>${esc(c.address||'Address not recorded')}</small><div class="customer-metrics"><span><b>${c.bookings}</b><small>Bookings</small></span><span><b>${c.completed}</b><small>Completed</small></span><span><b>${money(c.spent)}</b><small>Spent</small></span></div></div></article>`).join(''):`<div class="empty-state"><strong>No customers found</strong><small>Customers appear after bookings are made.</small></div>`}
+function renderCustomers(){
+  const q=(($('searchCustomers')?.value)||'').trim().toLowerCase();
+  const map=new Map();
+  bookings.forEach(b=>{
+    const key=(b.email||b.phone||b.name||'').toLowerCase(); if(!key)return;
+    const x=map.get(key)||{name:b.name||'Customer',email:b.email||'',phone:b.phone||'',bookings:0,completed:0,spent:0};
+    x.bookings++; if(b.status==='completed')x.completed++; if(b.status!=='cancelled')x.spent+=Number(b.price||0); map.set(key,x);
+  });
+  const rows=[...map.values()].filter(x=>`${x.name} ${x.email} ${x.phone}`.toLowerCase().includes(q));
+  const el=$('customerRows'); if(!el)return;
+  el.innerHTML=rows.length?rows.map(c=>`<tr><td><strong>${esc(c.name)}</strong></td><td><small>${esc(c.email||'No email')}</small><small>${esc(c.phone||'No phone')}</small></td><td>${c.bookings}</td><td>${c.completed}</td><td><strong>${money(c.spent)}</strong></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-state"><strong>No customers found</strong><small>Customers appear after bookings are made.</small></div></td></tr>`;
+}
 function renderInvoices(){const el=$('invoiceRows');if(!el)return;const rows=[...bookings].sort((a,b)=>`${b.date} ${b.start_time||''}`.localeCompare(`${a.date} ${a.start_time||''}`));el.innerHTML=rows.length?rows.map(b=>`<tr><td><strong>INV-${esc(b.booking_ref||b.id)}</strong></td><td>${esc(b.name||'—')}</td><td>${esc(b.booking_ref||b.id)}</td><td>${esc(fmtDate(b.date))}</td><td>${esc(money(b.price,b.currency||settings.currency))}</td><td><span class="status-chip status-${(b.payment_status||'unpaid')==='paid'?'completed':'pending'}">${esc(b.payment_status||'unpaid')}</span></td><td><div class="action-row"><button type="button" data-invoice="${esc(b.id)}">View / Print</button></div></td></tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>No invoices yet</strong></div></td></tr>`;el.querySelectorAll('[data-invoice]').forEach(x=>x.onclick=()=>{const b=bookings.find(y=>y.id===x.dataset.invoice);if(b)openInvoicePreview(b)})}
+function payrollPeriod(){
+  const input=$('payrollMonth');
+  const value=input?.value || new Date().toISOString().slice(0,7);
+  return {value,start:`${value}-01`,end:monthEnd(`${value}-01`)};
+}
+function renderPayroll(){
+  const input=$('payrollMonth'); if(!input) return;
+  const current=new Date().toISOString().slice(0,7); if(!input.value) input.value=current;
+  const {value,start,end}=payrollPeriod();
+  const monthBookings=bookings.filter(b=>b.date>=start&&b.date<end&&b.status!=='cancelled');
+  const rows=staff.map(member=>{
+    const met=staffMetrics(member,`${value}-15`);
+    // staffMetrics uses the current month; calculate the selected month directly for payroll.
+    const work=periodHoursAndRevenue(member.id,start,end);
+    const payType=member.pay_type||'hourly', hourly=Number(member.hourly_rate||0), base=Number(member.base_salary||0), standard=160;
+    const overtime=Math.max(0,work.hours-standard);
+    const gross=payType==='monthly'?base+overtime*hourly*1.5:work.hours*hourly;
+    const basic=payType==='monthly'?base:Math.min(gross,standard*hourly);
+    const ssnit=Math.min(Math.max(basic,587.80),69000)*0.055;
+    const taxable=Math.max(0,gross-ssnit);
+    const tax=payeGhana(taxable);
+    const adminCharge=gross*0.10;
+    const other=Number(member.other_deductions||0);
+    const net=Math.max(0,gross-ssnit-tax-adminCharge-other);
+    return {member,work,gross,ssnit,tax,adminCharge,other,net};
+  });
+  const total=r=>rows.reduce((sum,x)=>sum+x[r],0);
+  $('payrollPeriodLabel').textContent=new Date(`${value}-01T00:00:00`).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  $('payrollSummary').innerHTML=[
+    ['Gross payroll',money(total('gross')),'Before deductions'],
+    ['Employee SSNIT',money(total('ssnit')),'5.5% of basic'],
+    ['PAYE',money(total('tax')),'Graduated bands'],
+    ['Net payroll',money(total('net')),'After deductions']
+  ].map(x=>`<article class="payroll-summary-card"><small>${x[0]}</small><strong>${x[1]}</strong><span>${x[2]}</span></article>`).join('');
+  $('payrollRows').innerHTML=rows.length?rows.map(x=>`<tr><td><strong>${esc(x.member.name)}</strong><small>${esc(x.member.job_title||'Service professional')}</small></td><td>${x.work.hours.toFixed(1)}h</td><td>${money(x.gross)}</td><td>${money(x.ssnit)}</td><td>${money(x.tax)}</td><td>${money(x.adminCharge)}</td><td>${money(x.other)}</td><td class="net-cell">${money(x.net)}</td></tr>`).join(''):`<tr><td colspan="8"><div class="empty-state">No staff records available.</div></td></tr>`;
+}
+
 function renderReports(){const el=$('reportCards');if(!el)return;const today=new Date().toISOString().slice(0,10),ms=monthStart(today),me=monthEnd(today),m=bookings.filter(b=>b.date>=ms&&b.date<me&&b.status!=='cancelled'),rev=m.reduce((s,b)=>s+Number(b.price||0),0),done=m.filter(b=>b.status==='completed').length,h=m.reduce((s,b)=>s+durationHours(b.start_time,b.end_time),0);el.innerHTML=[[money(rev),'Month revenue','Recorded value'],[m.length,'Bookings','This month'],[done,'Completed','This month'],[h.toFixed(1)+'h','Recorded hours','Timed jobs']].map(x=>`<article class="report-card"><small>${x[1]}</small><strong>${x[0]}</strong><span>${x[2]}</span></article>`).join('');$('reportStaffRows').innerHTML=staff.map(s=>{const met=staffMetrics(s);const jobs=m.filter(b=>b.staff_id===s.id&&b.status!=='cancelled').length;return `<tr><td><strong>${esc(s.name||'Staff')}</strong></td><td>${jobs}</td><td>${met.month.hours.toFixed(1)}h</td><td>${money(met.month.revenue)}</td><td>${money(met.gross)}</td><td>${money(met.net)}</td></tr>`}).join('')||`<tr><td colspan="6"><div class="empty-state">No staff data available.</div></td></tr>`}
 
 function switchView(view){
@@ -540,7 +599,7 @@ function switchView(view){
   target.hidden = false;
   target.classList.add('active-view');
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => btn.classList.toggle('active',btn.dataset.view === view));
-  const titles = {overview:'Overview',bookings:'Bookings',staff:'Staff',customers:'Customers',invoices:'Invoices',reports:'Reports'};
+  const titles = {overview:'Overview',bookings:'Bookings',staff:'Staff',customers:'Customers',invoices:'Invoices',payroll:'Payroll',reports:'Reports'};
   $('viewTitle').textContent = titles[view] || 'Overview';
   closeSidebarMobile();
   window.scrollTo({top:0,behavior:'smooth'});

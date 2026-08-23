@@ -18,3 +18,36 @@
 @media(max-width:620px){.profile-action-row{flex-direction:column}.profile-action-row .btn{width:100%}}
 
 .customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.customer-card{display:flex;gap:14px;padding:18px;border:1px solid var(--admin-line);border-radius:18px;background:linear-gradient(145deg,#fff,#f8fbff);transition:.2s ease;box-shadow:0 8px 24px rgba(17,38,74,.04)}.customer-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(17,38,74,.09)}.customer-avatar{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#e8f0ff;color:var(--admin-primary);font-weight:900;font-size:18px;flex:none}.customer-main{min-width:0}.customer-main h3{margin:0;font-size:15px}.customer-main p{margin:4px 0;color:var(--admin-muted);font-size:11px}.customer-main>small{display:block;color:#69758a;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.customer-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.customer-metrics span{padding:8px;border-radius:10px;background:#f5f8fc;border:1px solid #e9eef5}.customer-metrics b,.customer-metrics small{display:block}.customer-metrics b{font-size:12px}.customer-metrics small{font-size:9px;color:var(--admin-muted);margin-top:2px}.report-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.report-card{padding:18px;border-radius:18px;background:linear-gradient(145deg,#0b1b35,#17365f);color:#fff;box-shadow:0 15px 35px rgba(10,25,49,.12)}.report-card small,.report-card span{display:block;color:#b8c8dd;font-size:10px}.report-card strong{display:block;font:700 27px 'Space Grotesk',sans-serif;margin:8px 0}.report-card span{line-height:1.5}@media(max-width:900px){.customer-grid{grid-template-columns:1fr}.report-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.report-grid{grid-template-columns:1fr}.customer-card{padding:15px}}
+
+/* TIDYLINE ADMIN V2 — index-aligned visual system */
+:root{--admin-bg:#fbfdfc;--admin-surface:#fff;--admin-ink:#10201b;--admin-muted:#64746e;--admin-line:#dce8e3;--admin-primary:#0e7562;--admin-primary-dark:#075b4d;--admin-soft:#eff9f5;--admin-green:#16865f;--admin-orange:#b97812;--admin-red:#a63c3c;--sidebar:#102f28;--sidebar-muted:#b8ccc6;--shadow:0 18px 50px rgba(16,49,41,.09)}
+.admin-body{background:var(--admin-bg);color:var(--admin-ink);font-family:Inter,system-ui,sans-serif}
+.admin-sidebar{background:linear-gradient(180deg,#102f28 0,#0b4e41 100%);box-shadow:12px 0 40px rgba(14,65,53,.08)}
+.sidebar-t-mark{background:linear-gradient(145deg,#fff,#dff2ec);color:var(--admin-primary)}
+.nav-item.active{background:linear-gradient(135deg,var(--admin-primary),#15967e);box-shadow:0 10px 26px rgba(14,117,98,.22)}
+.nav-item:hover{background:rgba(255,255,255,.09)}
+.admin-topbar{background:rgba(255,255,255,.84);border-color:var(--admin-line)}
+.topbar-kicker{color:var(--admin-primary)}
+.admin-content{max-width:1500px;margin:0 auto}
+.admin-card,.stat-card,.report-card,.staff-card,.customer-card{border-color:var(--admin-line);box-shadow:0 12px 35px rgba(16,49,41,.055)}
+.admin-card{border-radius:22px}
+.stat-card{background:linear-gradient(145deg,#fff,#f6fbf9);border-radius:18px;transition:.25s ease}
+.stat-card:hover,.staff-card:hover,.customer-card:hover{transform:translateY(-3px);box-shadow:0 20px 45px rgba(14,78,63,.10)}
+.btn-primary{background:linear-gradient(135deg,var(--admin-primary),#15927b);box-shadow:0 10px 24px rgba(14,117,98,.18)}
+.btn-primary:hover{background:linear-gradient(135deg,var(--admin-primary-dark),var(--admin-primary))}
+.btn-secondary{border-color:var(--admin-line);color:var(--admin-ink);background:#fff}
+.admin-body input:focus,.admin-body select:focus{border-color:#82cdbb;box-shadow:0 0 0 4px rgba(14,117,98,.10)}
+.status-pending,.status-chip.status-pending{background:#eff9f5;color:#0e7562;border-color:#cfe7df}
+.report-card{background:linear-gradient(145deg,#102f28,#0e7562)}
+.customer-grid{display:block}.customer-card{background:#fff}
+.customer-table td,.customer-table th{vertical-align:middle}
+.customer-table tbody tr{transition:.18s ease}.customer-table tbody tr:hover{background:#f5faf8}
+.toolbar-note{font-size:10px;color:var(--admin-muted);line-height:1.4}
+.audit-item{padding-right:34px}.audit-delete{position:absolute;right:2px;top:14px;width:28px;height:28px;border:1px solid #e6ebe8;background:#fff;border-radius:9px;color:#8b615f;font-size:16px;line-height:1}.audit-delete:hover{background:#fff3f1;color:#a63c3c;border-color:#e9c5c1}
+.audit-head-actions{align-items:center}
+.payroll-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.payroll-summary-card{padding:18px;border:1px solid var(--admin-line);background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(16,49,41,.05)}.payroll-summary-card small{display:block;color:var(--admin-muted);font-size:10px}.payroll-summary-card strong{display:block;font:800 24px Manrope,Inter,sans-serif;margin-top:7px;color:var(--admin-primary)}.payroll-summary-card span{display:block;color:var(--admin-muted);font-size:10px;margin-top:4px}.payroll-table td{white-space:nowrap}.payroll-table .net-cell{font-weight:800;color:var(--admin-primary)}
+.salary-summary div{background:#f4faf8;border-color:#dceee8}.profile-metrics div{background:#f4faf8;border-color:#dceee8}
+@media(max-width:1100px){.admin-content{max-width:none}.payroll-summary{grid-template-columns:repeat(2,1fr)}.payroll-table{min-width:980px}}
+@media(max-width:900px){.admin-content{padding-bottom:80px}.admin-topbar{padding:0 18px}.admin-content{padding-left:18px;padding-right:18px}.stats-grid{grid-template-columns:repeat(2,1fr)}.payroll-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.admin-topbar{height:70px}.topbar-left h1{font-size:19px}.topbar-right .session-pill{display:none}.admin-content{padding:18px 12px 70px}.page-heading h2,.welcome-row h2{font-size:28px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card strong{font-size:22px}.payroll-summary{grid-template-columns:1fr 1fr}.payroll-card{overflow:hidden}.payrollMonth{max-width:100%}.customers-card .toolbar{gap:10px}.customer-table{min-width:620px}.audit-head{align-items:flex-start}.audit-head-actions{flex-direction:row;align-items:center}.audit-tray{width:min(100%,460px);padding:18px}.admin-login-card{padding:26px 20px}.sidebar-brand-link{padding-left:5px}}
+@media(max-width:420px){.stats-grid{grid-template-columns:1fr}.payroll-summary{grid-template-columns:1fr}.welcome-row .btn,.page-heading .btn{width:100%}.topbar-right{display:none}}
