@@ -51,6 +51,9 @@
         <button class="nav-item active" data-view="overview" type="button"><span>⌂</span><span>Overview</span></button>
         <button class="nav-item" data-view="bookings" type="button"><span>▣</span><span>Bookings</span><b id="pendingBadge">0</b></button>
         <button class="nav-item" data-view="staff" type="button"><span>◉</span><span>Staff</span></button>
+        <button class="nav-item" data-view="customers" type="button"><span>♙</span><span>Customers</span></button>
+        <button class="nav-item" data-view="invoices" type="button"><span>▤</span><span>Invoices</span></button>
+        <button class="nav-item" data-view="reports" type="button"><span>◒</span><span>Reports</span></button>
         <button class="nav-item" id="auditNav" type="button"><span>≡</span><span>Audit tray</span></button>
       </nav>
 
@@ -120,6 +123,9 @@
             <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm"><label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label><button class="btn btn-primary" type="submit">Add staff member</button><small class="form-note">After adding, open the profile to enter employment, contact and salary information.</small></form></section>
           </div>
         </section>
+        <section id="view-customers" class="admin-view" hidden><div class="page-heading"><div><span class="eyebrow">Customer intelligence</span><h2>Customers</h2><p>Customer relationships and booking history.</p></div></div><section class="admin-card"><div class="toolbar"><div class="search-wrap"><span>⌕</span><input id="searchCustomers" type="search" placeholder="Search customer, email or phone…"></div></div><div id="customerGrid" class="customer-grid"></div></section></section>
+        <section id="view-invoices" class="admin-view" hidden><div class="page-heading"><div><span class="eyebrow">Finance</span><h2>Invoices</h2><p>Review and print booking invoices.</p></div></div><section class="admin-card"><div class="table-wrap"><table class="admin-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Booking</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody id="invoiceRows"></tbody></table></div></section></section>
+        <section id="view-reports" class="admin-view" hidden><div class="page-heading"><div><span class="eyebrow">Business intelligence</span><h2>Reports</h2><p>Revenue, workload and staff performance.</p></div></div><div id="reportCards" class="report-grid"></div><section class="admin-card"><div class="card-heading"><div><span class="card-kicker">Team performance</span><h3>Staff performance this month</h3></div></div><div class="table-wrap"><table class="admin-table"><thead><tr><th>Staff</th><th>Jobs</th><th>Hours</th><th>Revenue</th><th>Gross</th><th>Net</th></tr></thead><tbody id="reportStaffRows"></tbody></table></div></section></section>
       </main>
     </section>
   </div>
@@ -162,7 +168,7 @@
       </div></div>
       <div class="profile-section"><h3>Salary & payroll</h3><div class="pricing-grid">
         <label>Pay type<select id="staffPayType"><option value="hourly">Hourly</option><option value="monthly">Monthly salary</option></select></label><label>Hourly rate<input id="staffHourlyRate" type="number" min="0" step="0.01"></label><label>Base salary / month<input id="staffBaseSalary" type="number" min="0" step="0.01"></label><label>Tax rate %<input id="staffTaxRate" type="number" min="0" max="100" step="0.01"></label><label>Other deductions / month<input id="staffDeductions" type="number" min="0" step="0.01"></label>
-      </div><div class="salary-summary"><div><small>Gross salary</small><strong id="staffGross">$0.00</strong></div><div><small>Estimated tax</small><strong id="staffTax">$0.00</strong></div><div><small>Net salary</small><strong id="staffNet">$0.00</strong></div></div></div>
+      </div><div class="salary-summary"><div><small>Gross salary</small><strong id="staffGross">$0.00</strong></div><div><small>SSNIT · 5.5%</small><strong id="staffSSNIT">$0.00</strong></div><div><small>PAYE · graduated</small><strong id="staffTax">$0.00</strong></div><div><small>Admin charge · 10%</small><strong id="staffAdminCharge">$0.00</strong></div><div><small>Other deductions</small><strong id="staffDeductionsOut">$0.00</strong></div><div><small>Net salary</small><strong id="staffNet">$0.00</strong></div></div></div>
       <div class="profile-section"><h3>Emergency contact & notes</h3><div class="pricing-grid"><label>Emergency contact<input id="staffEmergencyName" type="text"></label><label>Emergency phone<input id="staffEmergencyPhone" type="tel"></label><label class="full-field">Notes<textarea id="staffNotes" rows="3"></textarea></label></div></div>
       <div class="profile-action-row"><button class="btn btn-secondary" id="profileAvailabilityBtn" type="button">Manage availability</button><button class="btn btn-primary" id="saveStaffProfile" type="button">Save staff profile</button></div>
     </div>

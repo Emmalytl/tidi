@@ -72,6 +72,8 @@ function periodHoursAndRevenue(staffId,start,end){
 function staffHours(staffId,date){ return periodHoursAndRevenue(staffId,weekStart(date),weekEnd(date)).hours; }
 function monthStart(date){ return `${date.slice(0,7)}-01`; }
 function monthEnd(date){ const d=new Date(`${monthStart(date)}T00:00:00`); d.setMonth(d.getMonth()+1); return d.toISOString().slice(0,10); }
+function payeGhana(income){ const bands=[[490,0],[110,.05],[130,.10],[3166.67,.175],[16000,.25],[30520,.30],[Infinity,.35]]; let r=Math.max(0,Number(income)||0),t=0; for(const [w,rate] of bands){const x=Math.min(r,w);t+=x*rate;r-=x;if(r<=0)break;} return t; }
+
 function staffMetrics(member,date=new Date().toISOString().slice(0,10)){
   const week=periodHoursAndRevenue(member.id,weekStart(date),weekEnd(date));
   const month=periodHoursAndRevenue(member.id,monthStart(date),monthEnd(date));
@@ -81,10 +83,13 @@ function staffMetrics(member,date=new Date().toISOString().slice(0,10)){
   const standardMonthlyHours=160;
   const overtime=Math.max(0,month.hours-standardMonthlyHours);
   const gross=payType==='monthly' ? base + overtime*hourly*1.5 : month.hours*hourly;
-  const tax=gross*(Number(member.tax_rate||0)/100);
+  const basic=payType==='monthly' ? base : Math.min(gross, standardMonthlyHours*hourly);
+  const ssnit=Math.min(Math.max(basic,587.80),69000)*0.055;
+  const tax=payeGhana(Math.max(0,gross-ssnit));
+  const adminCharge=gross*0.10;
   const deductions=Number(member.other_deductions||0);
-  const net=Math.max(0,gross-tax-deductions);
-  return {week,month,gross,tax,deductions,net,overtime};
+  const net=Math.max(0,gross-ssnit-tax-adminCharge-deductions);
+  return {week,month,gross,ssnit,tax,adminCharge,deductions,net,overtime};
 }
 
 function updateSessionStatus(text='● Active',warning=false){
@@ -218,14 +223,7 @@ async function loadData(){
   renderAll();
 }
 
-function renderAll(){
-  renderStats();
-  renderBookings();
-  renderStaff();
-  renderOverview();
-  renderAudit();
-  updatePendingBadge();
-}
+function renderAll(){ renderStats(); renderBookings(); renderStaff(); renderOverview(); renderAudit(); updatePendingBadge(); renderCustomers(); renderInvoices(); renderReports(); }
 
 function renderStats(){
   const today = new Date().toISOString().slice(0,10);
@@ -531,6 +529,10 @@ function openInvoicePreview(booking){
   modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
 }
 
+function renderCustomers(){const q=(($('searchCustomers')?.value)||'').trim().toLowerCase();const map=new Map();bookings.forEach(b=>{const key=(b.email||b.phone||b.name||'').toLowerCase();if(!key)return;const x=map.get(key)||{name:b.name||'Customer',email:b.email||'',phone:b.phone||'',address:b.address||'',bookings:0,completed:0,spent:0};x.bookings++;if(b.status==='completed')x.completed++;if(b.status!=='cancelled')x.spent+=Number(b.price||0);map.set(key,x)});const rows=[...map.values()].filter(x=>`${x.name} ${x.email} ${x.phone}`.toLowerCase().includes(q));const el=$('customerGrid');if(!el)return;el.innerHTML=rows.length?rows.map(c=>`<article class="customer-card"><div class="customer-avatar">${esc((c.name||'?')[0].toUpperCase())}</div><div class="customer-main"><h3>${esc(c.name)}</h3><p>${esc(c.email||'No email')} · ${esc(c.phone||'No phone')}</p><small>${esc(c.address||'Address not recorded')}</small><div class="customer-metrics"><span><b>${c.bookings}</b><small>Bookings</small></span><span><b>${c.completed}</b><small>Completed</small></span><span><b>${money(c.spent)}</b><small>Spent</small></span></div></div></article>`).join(''):`<div class="empty-state"><strong>No customers found</strong><small>Customers appear after bookings are made.</small></div>`}
+function renderInvoices(){const el=$('invoiceRows');if(!el)return;const rows=[...bookings].sort((a,b)=>`${b.date} ${b.start_time||''}`.localeCompare(`${a.date} ${a.start_time||''}`));el.innerHTML=rows.length?rows.map(b=>`<tr><td><strong>INV-${esc(b.booking_ref||b.id)}</strong></td><td>${esc(b.name||'—')}</td><td>${esc(b.booking_ref||b.id)}</td><td>${esc(fmtDate(b.date))}</td><td>${esc(money(b.price,b.currency||settings.currency))}</td><td><span class="status-chip status-${(b.payment_status||'unpaid')==='paid'?'completed':'pending'}">${esc(b.payment_status||'unpaid')}</span></td><td><div class="action-row"><button type="button" data-invoice="${esc(b.id)}">View / Print</button></div></td></tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>No invoices yet</strong></div></td></tr>`;el.querySelectorAll('[data-invoice]').forEach(x=>x.onclick=()=>{const b=bookings.find(y=>y.id===x.dataset.invoice);if(b)openInvoicePreview(b)})}
+function renderReports(){const el=$('reportCards');if(!el)return;const today=new Date().toISOString().slice(0,10),ms=monthStart(today),me=monthEnd(today),m=bookings.filter(b=>b.date>=ms&&b.date<me&&b.status!=='cancelled'),rev=m.reduce((s,b)=>s+Number(b.price||0),0),done=m.filter(b=>b.status==='completed').length,h=m.reduce((s,b)=>s+durationHours(b.start_time,b.end_time),0);el.innerHTML=[[money(rev),'Month revenue','Recorded value'],[m.length,'Bookings','This month'],[done,'Completed','This month'],[h.toFixed(1)+'h','Recorded hours','Timed jobs']].map(x=>`<article class="report-card"><small>${x[1]}</small><strong>${x[0]}</strong><span>${x[2]}</span></article>`).join('');$('reportStaffRows').innerHTML=staff.map(s=>{const met=staffMetrics(s);const jobs=m.filter(b=>b.staff_id===s.id&&b.status!=='cancelled').length;return `<tr><td><strong>${esc(s.name||'Staff')}</strong></td><td>${jobs}</td><td>${met.month.hours.toFixed(1)}h</td><td>${money(met.month.revenue)}</td><td>${money(met.gross)}</td><td>${money(met.net)}</td></tr>`}).join('')||`<tr><td colspan="6"><div class="empty-state">No staff data available.</div></td></tr>`}
+
 function switchView(view){
   document.querySelectorAll('.admin-view').forEach(section => { section.hidden = true; section.classList.remove('active-view'); });
   const target = $(`view-${view}`);
@@ -538,7 +540,7 @@ function switchView(view){
   target.hidden = false;
   target.classList.add('active-view');
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => btn.classList.toggle('active',btn.dataset.view === view));
-  const titles = {overview:'Overview',bookings:'Bookings',staff:'Staff'};
+  const titles = {overview:'Overview',bookings:'Bookings',staff:'Staff',customers:'Customers',invoices:'Invoices',reports:'Reports'};
   $('viewTitle').textContent = titles[view] || 'Overview';
   closeSidebarMobile();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -658,7 +660,7 @@ function bindEvents(){
   $('clearAuditBtn').addEventListener('click',clearAuditHistory);
   $('freshStartBtn').addEventListener('click',freshStart);
   $('searchBookings').addEventListener('input',renderBookings);
-  $('statusFilter').addEventListener('change',renderBookings);
+  $('statusFilter').addEventListener('change',renderBookings); $('searchCustomers')?.addEventListener('input',renderCustomers);
   $('overviewBookingsBtn').addEventListener('click',() => switchView('bookings'));
   $('stayLoggedIn').addEventListener('click',registerActivity);
   document.querySelectorAll('.sidebar-nav [data-view]').forEach(btn => btn.addEventListener('click',() => switchView(btn.dataset.view)));
