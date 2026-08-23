@@ -114,3 +114,6 @@ Run `supabase/migrations/004_staff_availability.sql` after the other migrations 
    - `Print / Save PDF` opens the browser print dialog.
    - `Download invoice` saves an HTML invoice that can be printed to PDF.
    - `Send invoice by email` uses the Supabase `send-email` Edge Function.
+
+## Staff Portal
+A mobile-first staff portal is included at `staff.html`. See `docs/STAFF-PORTAL-SETUP.md` and migration `supabase/migrations/010_staff_portal.sql` for account linking and setup.

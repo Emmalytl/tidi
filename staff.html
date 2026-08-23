@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>Tidyline — Staff Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="staff.css">
+</head>
+<body class="staff-body">
+<section id="staffLogin" class="staff-login-shell">
+  <div class="staff-login-card">
+    <a class="staff-brand" href="index.html"><span>T</span><strong>Tidyline</strong></a>
+    <span class="eyebrow">Staff portal</span><h1>Welcome back.</h1>
+    <p>Manage your assigned jobs, working hours and availability from one place.</p>
+    <form id="staffLoginForm">
+      <label>Email<input id="staffEmail" type="email" autocomplete="username" placeholder="you@tidyline.com" required></label>
+      <label>Password<input id="staffPassword" type="password" autocomplete="current-password" placeholder="Your password" required></label>
+      <button class="btn btn-primary btn-lg" type="submit" id="staffLoginBtn">Sign in</button>
+    </form>
+    <div id="staffLoginError" class="staff-error" role="alert"></div>
+    <small class="staff-note">Your staff account must be created in Supabase Authentication and linked to your Tidyline employee record.</small>
+  </div>
+</section>
+
+<div id="staffApp" class="staff-app" hidden>
+  <header class="staff-topbar">
+    <a class="staff-brand" href="staff.html"><span>T</span><strong>Tidyline</strong></a>
+    <div class="staff-top-actions"><span id="staffStatusPill" class="status-dot-pill">● Available</span><button id="staffLogout" class="staff-icon-btn" aria-label="Sign out">⇥</button></div>
+  </header>
+  <main class="staff-main">
+    <section id="staffHome" class="staff-view active">
+      <div class="staff-welcome"><div><span class="eyebrow">Staff workspace</span><h2 id="staffGreeting">Good morning</h2><p id="staffSubheading">Your work for today.</p></div><button id="availabilityHomeBtn" class="btn btn-secondary">My availability</button></div>
+      <div id="staffStats" class="staff-stat-grid"></div>
+      <section class="staff-panel"><div class="panel-head"><div><span class="card-kicker">Today</span><h3>Assigned jobs</h3></div><button id="refreshStaff" class="text-btn">Refresh</button></div><div id="todayJobs" class="job-list"></div></section>
+    </section>
+
+    <section id="staffJobs" class="staff-view" hidden>
+      <div class="staff-page-title"><span class="eyebrow">My work</span><h2>Jobs</h2><p>Only bookings assigned to you appear here.</p></div>
+      <div class="job-filter-row"><button class="filter-chip active" data-job-filter="active">Active</button><button class="filter-chip" data-job-filter="completed">Completed</button><button class="filter-chip" data-job-filter="all">All</button></div>
+      <div id="allJobs" class="job-list"></div>
+    </section>
+
+    <section id="staffHours" class="staff-view" hidden>
+      <div class="staff-page-title"><span class="eyebrow">Time & earnings</span><h2>My hours</h2><p>Hours are calculated from the start and end times you record on jobs.</p></div>
+      <div id="hoursSummary" class="earnings-grid"></div>
+      <section class="staff-panel"><div class="panel-head"><div><span class="card-kicker">Recent work</span><h3>Completed jobs</h3></div></div><div id="completedJobs" class="compact-list"></div></section>
+    </section>
+
+    <section id="staffAvailability" class="staff-view" hidden>
+      <div class="staff-page-title"><span class="eyebrow">Availability</span><h2>My availability</h2><p>Tell Tidyline when you are unavailable and why. Admin approval is required before the official schedule changes.</p></div>
+      <section class="staff-panel availability-current"><div class="panel-head"><div><span class="card-kicker">Current status</span><h3 id="currentAvailabilityTitle">Available</h3><p id="currentAvailabilityText">You are currently available for assignment.</p></div><span id="currentAvailabilityBadge" class="availability-badge available">Available</span></div></section>
+      <section class="staff-panel"><div class="panel-head"><div><span class="card-kicker">New request</span><h3>Submit availability or absence</h3><p>Choose the dates, status and reason.</p></div></div>
+        <form id="availabilityForm" class="availability-form">
+          <div class="form-grid"><label>Status<select id="availabilityStatus" required><option value="unavailable">Unavailable</option><option value="day_off">Day off</option><option value="sick">Sick off</option><option value="leave">Leave</option><option value="available">Available</option></select></label><label>From<input id="availabilityStart" type="date" required></label><label>To<input id="availabilityEnd" type="date" required></label></div>
+          <label>Reason<textarea id="availabilityReason" rows="4" maxlength="500" placeholder="Tell Admin why you are unavailable or what has changed…" required></textarea></label>
+          <div id="availabilityConflict" class="availability-warning" hidden></div>
+          <button class="btn btn-primary" type="submit">Submit request</button>
+        </form>
+      </section>
+      <section class="staff-panel"><div class="panel-head"><div><span class="card-kicker">History</span><h3>Availability requests</h3></div></div><div id="availabilityHistory" class="request-list"></div></section>
+    </section>
+  </main>
+  <nav class="staff-bottom-nav" aria-label="Staff navigation">
+    <button class="staff-nav active" data-staff-view="staffHome">⌂<span>Home</span></button>
+    <button class="staff-nav" data-staff-view="staffJobs">▣<span>Jobs</span></button>
+    <button class="staff-nav" data-staff-view="staffHours">◷<span>Hours</span></button>
+    <button class="staff-nav" data-staff-view="staffAvailability">◉<span>Availability</span></button>
+  </nav>
+</div>
+
+<div id="jobModal" class="staff-modal" hidden><div class="staff-modal-backdrop" data-close-job></div><section class="staff-modal-card" role="dialog" aria-modal="true" aria-labelledby="jobModalTitle"><button class="staff-modal-close" data-close-job aria-label="Close">×</button><div id="jobModalContent"></div></section></div>
+<div id="toast" class="staff-toast" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script><script src="js/staff.js"></script>
+</body></html>
