@@ -712,14 +712,29 @@ async function saveSettings(){
 async function addStaff(event){
   event.preventDefault();
   const name = $('newStaff').value.trim();
-  if(!name) return;
-  const id = `s_${Date.now()}`;
-  const {error} = await sb.from('staff').insert({id,name,active:true});
-  if(error){toast(error.message);return;}
-  $('newStaff').value = '';
-  await writeAudit(`Staff member ${name} added.`);
-  toast(`${name} added to the team.`);
-  await loadData();
+  const password = $('newStaffPassword').value;
+  const email = $('newStaffEmail').value.trim();
+  const phone = $('newStaffPhone').value.trim();
+  const address = $('newStaffAddress').value.trim();
+  if(!name || !email || !password || !phone){ toast('Name, email, phone and password are required.'); return; }
+  if(password.length < 8){ toast('Staff password must be at least 8 characters.'); return; }
+  const btn=$('addStaffBtn'); btn.disabled=true; btn.textContent='Creating account…';
+  try{
+    const {data,error}=await sb.functions.invoke('create-staff-account',{body:{name,email,phone,address,password}});
+    if(error) throw error;
+    if(!data?.success) throw new Error(data?.error || 'Unable to create staff account.');
+    $('newStaffId').value=data.staff_id||'';
+    $('newStaff').value=''; $('newStaffPassword').value=''; $('newStaffEmail').value=''; $('newStaffPhone').value=''; $('newStaffAddress').value='';
+    await writeAudit(`Staff member ${name} onboarded with Staff ID ${data.staff_id}.`);
+    toast(`${name} onboarded. Staff ID: ${data.staff_id}`);
+    await loadData();
+  }catch(err){ toast(err.message || 'Staff onboarding failed.'); }
+  finally{ btn.disabled=false; btn.textContent='Create staff account'; }
+}
+
+async function previewNextStaffId(){
+  const {data,error}=await sb.rpc('next_staff_id');
+  if(!error && data) $('newStaffId').value=data;
 }
 
 function exportCsv(){
@@ -832,6 +847,7 @@ sb.auth.onAuthStateChange((event,session) => {
 
 bindEvents();
 installUiGuards();
+previewNextStaffId();
 
 sb.auth.getSession().then(async ({data}) => {
   if(data.session) await showDashboard();

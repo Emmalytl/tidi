@@ -121,7 +121,19 @@
           <div class="page-heading"><div><span class="eyebrow">People & capacity</span><h2>Staff</h2><p>Assign work deliberately and keep weekly workloads visible.</p></div></div>
           <div class="staff-page-grid">
             <section class="admin-card"><div class="card-heading"><div><span class="card-kicker">Active team</span><h3>Capacity overview</h3><p>Target 20–40 hours per week.</p></div></div><div id="staffList" class="staff-grid"></div></section>
-            <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm"><label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label><button class="btn btn-primary" type="submit">Add staff member</button><small class="form-note">After adding, open the profile to enter employment, contact and salary information.</small></form></section>
+            <section class="admin-card add-staff-card"><div class="card-heading"><div><span class="card-kicker">Team management</span><h3>Add professional</h3><p>Add a staff member to the dispatch pool.</p></div></div><form id="addStaffForm" class="onboard-staff-form">
+  <div class="pricing-grid">
+    <label>Staff ID<input id="newStaffId" type="text" readonly placeholder="Automatically generated"></label>
+    <label>Full name<input id="newStaff" type="text" placeholder="e.g. Ama Mensah" required></label>
+    <label>Login password<input id="newStaffPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" required></label>
+    <label>Email<input id="newStaffEmail" type="email" placeholder="ama@example.com" required></label>
+    <label>Phone<input id="newStaffPhone" type="tel" placeholder="024..." required></label>
+    <label class="full-field">Address<textarea id="newStaffAddress" rows="2" placeholder="Residential address"></textarea></label>
+  </div>
+  <div class="onboard-note"><strong>Staff login</strong><span>The generated Staff ID and the password above will be used to sign in to the Staff Portal. The password is stored securely by Supabase Authentication and is never saved in the staff table.</span></div>
+  <button class="btn btn-primary" type="submit" id="addStaffBtn">Create staff account</button>
+  <small class="form-note">The Staff ID is generated automatically and cannot be duplicated.</small>
+</form></section>
           </div>
           <section class="admin-card availability-requests-card" style="margin-top:18px">
             <div class="card-heading"><div><span class="card-kicker">Staff requests</span><h3>Availability & absence approvals</h3><p>Approve or reject staff availability, leave, sick-off and day-off requests.</p></div><button class="text-btn" id="refreshAvailabilityRequests" type="button">Refresh →</button></div>
@@ -170,7 +182,7 @@
       <input type="hidden" id="staffProfileId">
       <div class="profile-metrics"><div><strong id="staffWeekHours">0h</strong><small>This week</small></div><div><strong id="staffMonthHours">0h</strong><small>This month</small></div><div><strong id="staffWeekRevenue">$0.00</strong><small>Week revenue</small></div><div><strong id="staffMonthRevenue">$0.00</strong><small>Month revenue</small></div></div>
       <div class="profile-section"><h3>Personal & employment</h3><div class="pricing-grid">
-        <label>Full name<input id="staffName" type="text"></label><label>Email<input id="staffEmail" type="email"></label><label>Phone<input id="staffPhone" type="tel"></label><label>Employee ID<input id="staffEmployeeId" type="text"></label><label>Job title<input id="staffJobTitle" type="text" placeholder="Cleaner / Supervisor"></label><label>Hire date<input id="staffHireDate" type="date"></label><label class="full-field">Address<textarea id="staffAddress" rows="2"></textarea></label>
+        <label>Full name<input id="staffName" type="text"></label><label>Email<input id="staffEmail" type="email"></label><label>Phone<input id="staffPhone" type="tel"></label><label>Staff ID<input id="staffEmployeeId" type="text" readonly></label><label>Job title<input id="staffJobTitle" type="text" placeholder="Cleaner / Supervisor"></label><label>Hire date<input id="staffHireDate" type="date"></label><label class="full-field">Address<textarea id="staffAddress" rows="2"></textarea></label>
       </div></div>
       <div class="profile-section"><h3>Salary & payroll</h3><div class="pricing-grid">
         <label>Pay type<select id="staffPayType"><option value="hourly">Hourly</option><option value="monthly">Monthly salary</option></select></label><label>Hourly rate<input id="staffHourlyRate" type="number" min="0" step="0.01"></label><label>Base salary / month<input id="staffBaseSalary" type="number" min="0" step="0.01"></label><label>Tax rate %<input id="staffTaxRate" type="number" min="0" max="100" step="0.01"></label><label>Other deductions / month<input id="staffDeductions" type="number" min="0" step="0.01"></label>

@@ -156,3 +156,8 @@ body.admin-body.modal-open{overflow:hidden;touch-action:none}
   .profile-metrics,.salary-summary{grid-template-columns:1fr}
   .topbar-left h1{font-size:17px}
 }
+.onboard-staff-form .pricing-grid{margin-top:4px}
+.onboard-staff-form input[readonly]{background:#f3f8f5;font-weight:800;letter-spacing:.04em}
+.onboard-note{display:flex;gap:10px;align-items:flex-start;margin:14px 0;padding:12px 14px;border:1px solid rgba(18,116,91,.16);background:rgba(18,116,91,.06);border-radius:14px;color:#36534a;font-size:13px;line-height:1.5}
+.onboard-note strong{color:#0f6d55;white-space:nowrap}
+@media (max-width:700px){.onboard-note{display:block}.onboard-note strong{display:block;margin-bottom:3px}}
