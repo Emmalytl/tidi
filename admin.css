@@ -16,3 +16,143 @@
 @media(max-width:620px){.profile-metrics{grid-template-columns:1fr 1fr}.salary-summary{grid-template-columns:1fr}.staff-card-actions{flex-direction:column}.audit-head-actions{flex-direction:column;align-items:flex-end}.settings-actions{flex-direction:column}.settings-actions .btn{width:100%}}
 .profile-action-row{display:flex;gap:10px;margin-top:18px}.profile-action-row .btn{flex:1}
 @media(max-width:620px){.profile-action-row{flex-direction:column}.profile-action-row .btn{width:100%}}
+
+.customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.customer-card{display:flex;gap:14px;padding:18px;border:1px solid var(--admin-line);border-radius:18px;background:linear-gradient(145deg,#fff,#f8fbff);transition:.2s ease;box-shadow:0 8px 24px rgba(17,38,74,.04)}.customer-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(17,38,74,.09)}.customer-avatar{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#e8f0ff;color:var(--admin-primary);font-weight:900;font-size:18px;flex:none}.customer-main{min-width:0}.customer-main h3{margin:0;font-size:15px}.customer-main p{margin:4px 0;color:var(--admin-muted);font-size:11px}.customer-main>small{display:block;color:#69758a;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.customer-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.customer-metrics span{padding:8px;border-radius:10px;background:#f5f8fc;border:1px solid #e9eef5}.customer-metrics b,.customer-metrics small{display:block}.customer-metrics b{font-size:12px}.customer-metrics small{font-size:9px;color:var(--admin-muted);margin-top:2px}.report-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.report-card{padding:18px;border-radius:18px;background:linear-gradient(145deg,#0b1b35,#17365f);color:#fff;box-shadow:0 15px 35px rgba(10,25,49,.12)}.report-card small,.report-card span{display:block;color:#b8c8dd;font-size:10px}.report-card strong{display:block;font:700 27px 'Space Grotesk',sans-serif;margin:8px 0}.report-card span{line-height:1.5}@media(max-width:900px){.customer-grid{grid-template-columns:1fr}.report-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.report-grid{grid-template-columns:1fr}.customer-card{padding:15px}}
+
+/* TIDYLINE ADMIN V2 — index-aligned visual system */
+:root{--admin-bg:#fbfdfc;--admin-surface:#fff;--admin-ink:#10201b;--admin-muted:#64746e;--admin-line:#dce8e3;--admin-primary:#0e7562;--admin-primary-dark:#075b4d;--admin-soft:#eff9f5;--admin-green:#16865f;--admin-orange:#b97812;--admin-red:#a63c3c;--sidebar:#102f28;--sidebar-muted:#b8ccc6;--shadow:0 18px 50px rgba(16,49,41,.09)}
+.admin-body{background:var(--admin-bg);color:var(--admin-ink);font-family:Inter,system-ui,sans-serif}
+.admin-sidebar{background:linear-gradient(180deg,#102f28 0,#0b4e41 100%);box-shadow:12px 0 40px rgba(14,65,53,.08)}
+.sidebar-t-mark{background:linear-gradient(145deg,#fff,#dff2ec);color:var(--admin-primary)}
+.nav-item.active{background:linear-gradient(135deg,var(--admin-primary),#15967e);box-shadow:0 10px 26px rgba(14,117,98,.22)}
+.nav-item:hover{background:rgba(255,255,255,.09)}
+.admin-topbar{background:rgba(255,255,255,.84);border-color:var(--admin-line)}
+.topbar-kicker{color:var(--admin-primary)}
+.admin-content{max-width:1500px;margin:0 auto}
+.admin-card,.stat-card,.report-card,.staff-card,.customer-card{border-color:var(--admin-line);box-shadow:0 12px 35px rgba(16,49,41,.055)}
+.admin-card{border-radius:22px}
+.stat-card{background:linear-gradient(145deg,#fff,#f6fbf9);border-radius:18px;transition:.25s ease}
+.stat-card:hover,.staff-card:hover,.customer-card:hover{transform:translateY(-3px);box-shadow:0 20px 45px rgba(14,78,63,.10)}
+.btn-primary{background:linear-gradient(135deg,var(--admin-primary),#15927b);box-shadow:0 10px 24px rgba(14,117,98,.18)}
+.btn-primary:hover{background:linear-gradient(135deg,var(--admin-primary-dark),var(--admin-primary))}
+.btn-secondary{border-color:var(--admin-line);color:var(--admin-ink);background:#fff}
+.admin-body input:focus,.admin-body select:focus{border-color:#82cdbb;box-shadow:0 0 0 4px rgba(14,117,98,.10)}
+.status-pending,.status-chip.status-pending{background:#eff9f5;color:#0e7562;border-color:#cfe7df}
+.report-card{background:linear-gradient(145deg,#102f28,#0e7562)}
+.customer-grid{display:block}.customer-card{background:#fff}
+.customer-table td,.customer-table th{vertical-align:middle}
+.customer-table tbody tr{transition:.18s ease}.customer-table tbody tr:hover{background:#f5faf8}
+.toolbar-note{font-size:10px;color:var(--admin-muted);line-height:1.4}
+.audit-item{padding-right:34px}.audit-delete{position:absolute;right:2px;top:14px;width:28px;height:28px;border:1px solid #e6ebe8;background:#fff;border-radius:9px;color:#8b615f;font-size:16px;line-height:1}.audit-delete:hover{background:#fff3f1;color:#a63c3c;border-color:#e9c5c1}
+.audit-head-actions{align-items:center}
+.payroll-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.payroll-summary-card{padding:18px;border:1px solid var(--admin-line);background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(16,49,41,.05)}.payroll-summary-card small{display:block;color:var(--admin-muted);font-size:10px}.payroll-summary-card strong{display:block;font:800 24px Manrope,Inter,sans-serif;margin-top:7px;color:var(--admin-primary)}.payroll-summary-card span{display:block;color:var(--admin-muted);font-size:10px;margin-top:4px}.payroll-table td{white-space:nowrap}.payroll-table .net-cell{font-weight:800;color:var(--admin-primary)}
+.salary-summary div{background:#f4faf8;border-color:#dceee8}.profile-metrics div{background:#f4faf8;border-color:#dceee8}
+@media(max-width:1100px){.admin-content{max-width:none}.payroll-summary{grid-template-columns:repeat(2,1fr)}.payroll-table{min-width:980px}}
+@media(max-width:900px){.admin-content{padding-bottom:80px}.admin-topbar{padding:0 18px}.admin-content{padding-left:18px;padding-right:18px}.stats-grid{grid-template-columns:repeat(2,1fr)}.payroll-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.admin-topbar{height:70px}.topbar-left h1{font-size:19px}.topbar-right .session-pill{display:none}.admin-content{padding:18px 12px 70px}.page-heading h2,.welcome-row h2{font-size:28px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card strong{font-size:22px}.payroll-summary{grid-template-columns:1fr 1fr}.payroll-card{overflow:hidden}.payrollMonth{max-width:100%}.customers-card .toolbar{gap:10px}.customer-table{min-width:620px}.audit-head{align-items:flex-start}.audit-head-actions{flex-direction:row;align-items:center}.audit-tray{width:min(100%,460px);padding:18px}.admin-login-card{padding:26px 20px}.sidebar-brand-link{padding-left:5px}}
+@media(max-width:420px){.stats-grid{grid-template-columns:1fr}.payroll-summary{grid-template-columns:1fr}.welcome-row .btn,.page-heading .btn{width:100%}.topbar-right{display:none}}
+
+
+/* TIDYLINE ADMIN V3 — responsive operations shell */
+.admin-sidebar{height:100dvh;max-height:100dvh;overflow:hidden;overscroll-behavior:contain}
+.sidebar-nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 2px 10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.sidebar-nav::-webkit-scrollbar{width:5px}.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:99px}
+.sidebar-bottom{flex:none}.admin-main{min-width:0}.admin-content{width:100%;overflow-x:clip}
+.admin-card,.stat-card,.staff-card,.customer-card,.payroll-summary-card{position:relative;overflow:hidden}
+.admin-card::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--admin-primary),transparent);opacity:.16}
+.nav-item{position:relative}.nav-item.active::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:99px;background:#bdeee2}
+.admin-view{animation:adminViewIn .28s ease both}@keyframes adminViewIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.table-wrap{overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}.admin-table thead th{position:sticky;top:0;z-index:2;background:#f9fcfb}.admin-table tbody tr{transition:background .18s ease,transform .18s ease}.admin-table tbody tr:hover{background:#f5faf8}
+.action-row{flex-wrap:wrap}.action-row button{transition:.18s ease}.action-row button:hover{transform:translateY(-1px)}
+.status{white-space:nowrap}
+@media(max-width:900px){.admin-sidebar{width:min(300px,88vw)}.admin-content{padding-left:18px;padding-right:18px}.admin-topbar{padding-left:18px;padding-right:18px}.admin-card{padding:20px}}
+@media(max-width:640px){.admin-sidebar{width:min(320px,90vw)}.admin-content{padding:16px 12px 88px}.admin-topbar{height:66px}.topbar-left{min-width:0}.topbar-left>div{min-width:0}.topbar-left h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-right{display:none}.welcome-row,.page-heading{gap:14px;margin-bottom:18px}.welcome-row h2,.page-heading h2{font-size:27px}.admin-card{padding:15px;border-radius:17px}.card-heading{gap:10px}.card-heading h3{font-size:17px}.stats-grid{grid-template-columns:1fr 1fr}.stat-card{padding:13px}.stat-card strong{font-size:21px}.table-wrap{margin:0 -3px;padding-bottom:5px}.admin-table{min-width:720px}.customer-table{min-width:620px}.payroll-table{min-width:980px}.toolbar{gap:9px}.search-wrap input{min-height:46px}.toolbar select{min-height:46px}.btn{min-height:44px}.staff-card-actions .btn{min-height:44px}
+}
+@media(max-width:390px){.stats-grid{grid-template-columns:1fr}.admin-content{padding-left:10px;padding-right:10px}.admin-topbar{padding:0 12px}.topbar-left h1{font-size:18px}.mobile-menu-btn{width:42px;height:42px}.admin-card{padding:13px}.page-heading .btn,.welcome-row .btn{width:100%}}
+
+/* TIDYLINE ADMIN V4 — mobile-first shell, modal safety and touch UX */
+html{background:var(--admin-bg);-webkit-text-size-adjust:100%}
+body.admin-body{overflow-x:hidden}
+body.admin-body.modal-open{overflow:hidden;touch-action:none}
+.admin-sidebar{overscroll-behavior-y:contain;scrollbar-gutter:stable;}
+.sidebar-nav{overscroll-behavior:contain;touch-action:pan-y;}
+.admin-main{min-width:0;overflow-x:hidden}
+.admin-content{min-width:0;overflow-x:hidden}
+.admin-topbar{min-width:0}
+.topbar-left{min-width:0}
+.topbar-left>div{min-width:0}
+.btn,.icon-btn,.modal-close,.audit-delete,.nav-item,.action-row button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.modal{z-index:120;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;overflow-x:hidden;padding:clamp(10px,3vw,28px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal.open{display:flex}
+.modal-card{margin:auto;width:min(680px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:clamp(20px,4vw,30px);border-radius:22px}
+.modal-close{z-index:3;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(16,49,41,.06)}
+.staff-profile-modal{width:min(820px,100%);max-height:calc(100dvh - 40px)}
+.staff-status-modal{width:min(640px,100%);max-height:calc(100dvh - 40px)}
+.invoice-preview-card{max-height:calc(100dvh - 40px);width:min(850px,100%)}
+.invoice-preview-card #invoicePreviewContent{max-width:100%;overflow:hidden}
+.invoice-actions{position:sticky;bottom:0;background:#fff;z-index:2}
+.audit-tray{height:100dvh;max-height:100dvh;overscroll-behavior:contain}
+.audit-list{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.audit-item{padding-right:44px}
+.audit-delete{z-index:2;display:grid;place-items:center;cursor:pointer;min-width:32px;min-height:32px}
+@media (max-width:900px){
+  .admin-sidebar{width:min(320px,88vw);padding:16px 12px}
+  .sidebar-profile{margin:20px 4px 14px}
+  .admin-main{margin-left:0}
+  .admin-content{padding:20px 16px 80px}
+  .admin-topbar{height:68px;padding:0 16px}
+  .mobile-menu-btn{display:grid!important;place-items:center;width:42px;height:42px;border:1px solid var(--admin-line);border-radius:12px;background:#fff;color:var(--admin-primary)}
+  .toolbar{flex-wrap:wrap}
+  .toolbar>*{min-width:0}
+  .table-wrap{max-width:100%;overflow-x:auto}
+}
+@media (max-width:640px){
+  .admin-sidebar{width:min(340px,92vw);padding:14px 10px}
+  .sidebar-nav{padding-bottom:18px}
+  .sidebar-bottom{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .admin-topbar{height:64px;padding:0 12px}
+  .admin-content{padding:14px 10px calc(76px + env(safe-area-inset-bottom))}
+  .welcome-row,.page-heading{width:100%;}
+  .welcome-row h2,.page-heading h2{font-size:25px;line-height:1.15}
+  .stats-grid{gap:8px}
+  .stat-card{min-width:0;padding:12px;border-radius:15px}
+  .stat-card strong{font-size:20px;overflow:hidden;text-overflow:ellipsis}
+  .admin-card{padding:14px;border-radius:16px}
+  .card-heading{flex-wrap:wrap}
+  .toolbar{width:100%;align-items:stretch;flex-direction:column}
+  .search-wrap,.toolbar select,.toolbar .btn{width:100%;max-width:none}
+  .action-row{gap:6px}
+  .action-row button{min-height:42px;padding:9px 10px}
+  .modal{padding:8px;align-items:flex-start}
+  .modal-card,.staff-profile-modal,.staff-status-modal,.invoice-preview-card{width:100%;max-width:none;max-height:calc(100dvh - 16px);margin:8px 0;padding:18px 14px;border-radius:18px}
+  .modal-card h2{font-size:22px;padding-right:42px}
+  .modal-intro{font-size:11px;padding-right:8px}
+  .modal-close{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:12px;font-size:22px}
+  .pricing-grid{grid-template-columns:1fr;gap:10px}
+  .profile-metrics,.salary-summary{grid-template-columns:1fr 1fr}
+  .profile-action-row,.settings-actions,.invoice-actions{flex-direction:column;align-items:stretch}
+  .profile-action-row .btn,.settings-actions .btn,.invoice-actions .btn{width:100%;min-height:46px}
+  .audit-tray{width:100%;padding:14px 12px}
+  .audit-head{gap:10px;align-items:flex-start}
+  .audit-head h2{font-size:23px}
+  .audit-head-actions{flex-shrink:0}
+  .audit-head-actions .btn{min-height:42px}
+  .audit-delete{width:38px;height:38px;right:0;top:10px}
+  .audit-item{padding:12px 48px 12px 18px}
+  .audit-item strong{font-size:11px;overflow-wrap:anywhere}
+  .audit-item small{font-size:9px}
+  .logout-warning{inset:auto 8px calc(8px + env(safe-area-inset-bottom))}
+  .logout-warning-card{padding:12px;flex-wrap:wrap}
+  .logout-warning-card .btn{width:100%;margin-left:0;min-height:44px}
+  .toast{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center}
+  .customer-table{min-width:560px}
+  .admin-table{min-width:700px}
+  .payroll-table{min-width:900px}
+}
+@media (max-width:390px){
+  .stats-grid{grid-template-columns:1fr}
+  .admin-content{padding-left:8px;padding-right:8px}
+  .modal-card,.staff-profile-modal,.staff-status-modal,.invoice-preview-card{padding:16px 12px}
+  .profile-metrics,.salary-summary{grid-template-columns:1fr}
+  .topbar-left h1{font-size:17px}
+}
